@@ -16,11 +16,11 @@ struct die{
 	int side_count;		// A die has some number of sides.
 	int face_num;		// Each side has a number associated with it.
 
-	die(int x){			// Creates a die with x number of faces.
+	die(int x = 6){			// Creates a die with x number of faces. Standard dice have 6 faces.
 		side_count = x;
 	}
 
-	int roll(){
+	int roll(){				// A roll of a die results in any number between 1 and the number of faces.
 		return rand() % side_count + 1;
 	}
 
@@ -28,15 +28,8 @@ struct die{
 		return roll() + roll();
 	}
 
+	int MC_roll(){
+		return roll() + roll() + roll() + roll();
+	}
+
 };
-
-/*void main(){
-	srand(time(NULL));
-	die die1 = die(6);
-
-	int result = die1.roll();
-	cout << result << endl;
-	result = die1.HK_roll();
-	cout << result << endl;
-	system("pause");
-}*/

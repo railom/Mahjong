@@ -3,15 +3,18 @@
 // Date: 5/27/2015
 // Version: A.1
 
+//#define NULL -2
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <random>
 #include <algorithm>
-#include <time.h>
 #include <chrono>
+//#include <time.h>
 
 using namespace std;
+
 
 struct Tile{
 	string suit;			// A tile can be any of 4 suits or an honor.
@@ -26,15 +29,15 @@ struct Tile{
 		switch (t){
 			case 'd':
 				suit = "Red Dragon";
-				value = NULL;
+				value = 42;
 				break;
 			case 't':
 				suit = "White Dragon";
-				value = NULL;
+				value = 42;
 				break;
 			case 'g':
 				suit = "Green Dragon";
-				value = NULL;
+				value = 42;
 				break;
 			case 's':
 				suit = "South";
@@ -86,7 +89,7 @@ struct Tile{
 				break;
 			default:
 				suit = "Grass";
-				value = -1234422;
+				value = -1;
 				break;
 		}
 	}
@@ -108,20 +111,25 @@ struct Tile{
 				value = x;
 				//red = False;
 				break;
+			default:
+				suit = "Grass";
+				value = -1;
+				break;
 		}
-	}
-
-	Tile draw_tile(){
-		return NULL;
 	}
 
 };
 
-/*Tile* tile_setup(){
-	Tile tiles[144];
-	int i = 0;
+/*Tile tiles[144];
 
-	tiles[i] = Tile('o');
+Tile Draw_tile(){
+	return tiles[0];
+}*/
+
+/*Tile* Tile_setup(){
+	int i = 0;
+	tiles[i] = Tile('t');
+	/*tiles[i] = Tile('o');
 	tiles[i + 1] = Tile('c');
 	tiles[i + 2] = Tile('b');
 	tiles[i + 3] = Tile('p');
@@ -129,6 +137,6 @@ struct Tile{
 	tiles[i + 5] = Tile('ssu');
 	tiles[i + 6] = Tile('sw');
 	tiles[i + 7] = Tile('sa');
-
+	
 	return tiles;
 }*/
