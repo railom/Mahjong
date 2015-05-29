@@ -3,8 +3,6 @@
 // Date: 5/27/2015
 // Version: A.1
 
-//#define NULL -2
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -80,7 +78,7 @@ struct Tile{
 				value = 2;
 				break;
 			case 'c':
-				suit = "Chrysantemum";
+				suit = "Chrysanthemum";
 				value = 3;
 				break;
 			case 'b':
@@ -120,23 +118,3 @@ struct Tile{
 
 };
 
-/*Tile tiles[144];
-
-Tile Draw_tile(){
-	return tiles[0];
-}*/
-
-/*Tile* Tile_setup(){
-	int i = 0;
-	tiles[i] = Tile('t');
-	/*tiles[i] = Tile('o');
-	tiles[i + 1] = Tile('c');
-	tiles[i + 2] = Tile('b');
-	tiles[i + 3] = Tile('p');
-	tiles[i + 4] = Tile('ssp');
-	tiles[i + 5] = Tile('ssu');
-	tiles[i + 6] = Tile('sw');
-	tiles[i + 7] = Tile('sa');
-	
-	return tiles;
-}*/

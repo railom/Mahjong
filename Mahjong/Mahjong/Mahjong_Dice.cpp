@@ -13,8 +13,8 @@
 using namespace std;
 
 struct die{
-	int side_count;		// A die has some number of sides.
-	int face_num;		// Each side has a number associated with it.
+	int side_count;			// A die has some number of sides.
+	int face_num;			// Each side has a number associated with it.
 
 	die(int x = 6){			// Creates a die with x number of faces. Standard dice have 6 faces.
 		side_count = x;
