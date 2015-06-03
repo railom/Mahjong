@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClCompile Include="Mahjong_Dice.cpp" />
     <ClCompile Include="Mahjong_Main.cpp" />
+    <ClCompile Include="Mahjong_Player.cpp" />
     <ClCompile Include="Mahjong_Tile.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

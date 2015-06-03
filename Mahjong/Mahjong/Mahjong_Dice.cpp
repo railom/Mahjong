@@ -1,7 +1,7 @@
-// Dice roller for a variety of mahjong types
+// Dice roller for a variety of mahjong types or any other situation.
 // Author: Alex Lobl
 // Date: 5/27/2015
-// Version: A.1
+// Version: 0.1.0 Alpha
 
 #include <stdio.h>
 #include <stdlib.h>

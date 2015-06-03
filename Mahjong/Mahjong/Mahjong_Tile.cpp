@@ -1,7 +1,7 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
 // Date: 5/27/2015
-// Version: A.1
+// Version: 0.0.1 Alpha
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +9,6 @@
 #include <random>
 #include <algorithm>
 #include <chrono>
-//#include <time.h>
 
 using namespace std;
 
@@ -17,6 +16,7 @@ using namespace std;
 struct Tile{
 	string suit;			// A tile can be any of 4 suits or an honor.
 	int value;				// A tile of a suit can have value 1-9.
+	int sort_value;
 	//bool Dora_indicator;	// Whether or not the tile indicates the dora tile. Used in Japanese mahjong.
 	//bool red;				// Whether or not the tile is red, worth an extra point in a winning hand.
 
@@ -118,3 +118,15 @@ struct Tile{
 
 };
 
+/*struct Meld{
+	string name;		// The name of the meld, any of: pong, kong, or chow.
+	bool hidden = true;		// Whether or not the meld is in hand or open.
+
+	Meld(Tile x, Tile y, Tile z, Tile w = NULL){
+		if (w.value <= 0){
+			if (x.value == y.value && y.value == z.value && x.suit == y.suit && y.suit == z.suit){
+				name = "Pong";
+			}
+		}
+	}
+};*/
