@@ -16,7 +16,6 @@ using namespace std;
 struct Tile{
 	string suit;			// A tile can be any of 4 suits or an honor.
 	int value;				// A tile of a suit can have value 1-9.
-	int sort_value;
 	//bool Dora_indicator;	// Whether or not the tile indicates the dora tile. Used in Japanese mahjong.
 	//bool red;				// Whether or not the tile is red, worth an extra point in a winning hand.
 
