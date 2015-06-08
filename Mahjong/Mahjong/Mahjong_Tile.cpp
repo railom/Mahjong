@@ -1,6 +1,6 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
-// Date: 5/27/2015
+// Date: 6/8/2015
 // Version: 0.0.1 Alpha
 
 #include <stdio.h>
@@ -117,15 +117,62 @@ struct Tile{
 
 };
 
-/*struct Meld{
-	string name;		// The name of the meld, any of: pong, kong, or chow.
+struct Meld{
+	string name;			// The name of the meld, any of: pong, kong, or chow (chii).
 	bool hidden = true;		// Whether or not the meld is in hand or open.
+	Tile* melded = new Tile[4];
+
+	Meld(){
+		name = "NONE";
+		melded = NULL;
+	}
+
+	Meld(Tile x, Tile y){
+		if (x.value == y.value && x.suit == y.suit)
+		{
+			name = "Pair";
+			melded[0] = x;
+			melded[1] = y;
+			melded[2] = NULL;
+			melded[3] = NULL;
+		}
+	}
 
 	Meld(Tile x, Tile y, Tile z, Tile w = NULL){
 		if (w.value <= 0){
 			if (x.value == y.value && y.value == z.value && x.suit == y.suit && y.suit == z.suit){
 				name = "Pong";
+				melded[0] = x;
+				melded[1] = y;
+				melded[2] = z;
+				melded[3] = w;
+			}
+			else if ((x.value == y.value - 1 && y.value == z.value - 1 && x.suit == y.suit && y.suit == z.suit) || (x.value == y.value + 1 && y.value == z.value + 1 && x.suit == y.suit && y.suit == z.suit) ||
+				(x.value == y.value - 2 && y.value == z.value + 1 && x.suit == y.suit && y.suit == z.suit) || (x.value == y.value + 1 && y.value == z.value - 2 && x.suit == y.suit && y.suit == z.suit) ||
+				(x.value == y.value - 1 && y.value == z.value + 2 && x.suit == y.suit && y.suit == z.suit) || (x.value == y.value + 2 && y.value == z.value - 1 && x.suit == y.suit && y.suit == z.suit)){
+				name = "Chow";
+				melded[0] = x;
+				melded[1] = y;
+				melded[2] = z;
+				melded[3] = w;
+			}
+			else {
+				name = "NONE";
+				melded = NULL;
+			}
+		}
+		else {
+			if (x.value == y.value && y.value == z.value && z.value == w.value && x.suit == y.suit && y.suit == z.suit && z.suit == w.suit){
+				name = "Kong";
+				melded[0] = x;
+				melded[1] = y;
+				melded[2] = z;
+				melded[3] = w;
+			}
+			else{
+				name = "NONE";
+				melded = NULL;
 			}
 		}
 	}
-};*/
+};

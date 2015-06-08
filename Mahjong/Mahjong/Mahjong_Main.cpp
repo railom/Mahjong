@@ -1,6 +1,6 @@
 // The main game code.
 // Author: Alex Lobl
-// Date: 6/5/2015
+// Date: 6/8/2015
 // Version: 0.0.1 Alpha
 
 #include "Mahjong_Dice.cpp"
@@ -16,11 +16,12 @@ using namespace std::chrono;
 
 #pragma region
 enum Turn { EAST, SOUTH, WEST, NORTH };
-enum Game { JAPANESE, HONGKONG, CHINESE, NONE };
+enum Game { JAPANESE, HONGKONG, CHINESE, NONE, MENU };
 
 int roll;
 int game_Running;
 int turn = EAST;
+int turn_Counter = EAST;
 int round_Counter = 0;
 int move_Round = 0;
 
@@ -36,6 +37,7 @@ char honors[] = { 's', 'n', 'e', 'w', 'd', 't', 'g' };
 char normals[] = { 'm', 'p', 's' };
 
 bool game_is_running = true;
+bool has_Won_Hand = false;
 
 Tile wall[144];
 Tile wall2[144];
@@ -441,6 +443,7 @@ void update(){
 	cout << "J -- Japanese Riichi Mahjong\nH -- Hong Kong Style\nM -- Modern Chinese Style\nQ -- Quit" << endl;
 	cin >> e_Selector;
 	
+#pragma region
 	if (e_Selector == 'J' || e_Selector == 'j'){
 		M_type = JAPANESE;
 		game_Running = JAPANESE;
@@ -457,6 +460,7 @@ void update(){
 		M_type = NONE;
 		game_Running = NONE;
 	}
+#pragma endregion Enum Select
 
 #pragma region 
 	if (game_Running == JAPANESE) {
@@ -474,12 +478,17 @@ void update(){
 #pragma region 
 	if (game_Running == HONGKONG){
 		while (game_Running == HONGKONG){
-			round_Counter = EAST + move_Round;
+			round_Counter = EAST + move_Round; 
 			cout << "Round: " << round_Counter << endl;
-			move_Round = 0;
+			cout << "Turn: " << turn_Counter << endl;
 			roll = A_die.HK_roll();
 			cout << "Rolled " << roll << "\n\n" << endl;
 
+			for (int i = 0; i < 144; i++){
+				if (discards[i].value > 0){
+					discards[i] = NULL;
+				}
+			}
 			setup_Wall = wall_Split(wall_Setup(), roll);
 			east.hand_Points = 1;
 			south.hand_Points = 1;
@@ -487,8 +496,14 @@ void update(){
 			west.hand_Points = 1;
 
 #pragma region
-			hand_Create(setup_Wall);
+			hand_Create(setup_Wall); // Create all the hands at the same time.
 
+			// Then sort the hands and look to see if there are any flowers or seasons.
+			// Flowers and seasons are removed from the hand, and replaced from the end
+			// of the wall.
+			// If the position of the flower or season doesn't match a player's seat,
+			// that player's hand is worth 0 points. Each flower or season of that
+			// player's seat is worth 1 point (up to 2 points).
 			east.hand = east.sort_Hand(east.hand);
 			for (int i = 0; i < 13; i++){
 				while (east.hand[i].suit == "Winter" || east.hand[i].suit == "Summer" || east.hand[i].suit == "Autumn" || east.hand[i].suit == "Spring" ||
@@ -580,13 +595,25 @@ void update(){
 			north.hand = north.sort_Hand(north.hand);
 #pragma endregion Initial Hands
 			
-			while (round_Counter < round_Counter + 1){
+			while (round_Counter < 6){
 
 #pragma region
 				if (turn == EAST){
 					while (turn == EAST){
 						cout << "East player, choose:" << endl;
-						cout << "D: Draw a tile.\nC: Claim the last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						if (east.can_Chow(east.hand, last_Discard_Tile)){
+							cout << "C: Call chow from last discard.\n";
+						}
+						if (east.can_Pong(east.hand, last_Discard_Tile)){
+							cout << "P: Call pong from last discard.\n";
+						}
+						if (east.can_Kong(east.hand, last_Discard_Tile)){
+							cout << "K: Call kong from last discard.\n";
+						}
+						if (east.can_Win(east.hand, last_Discard_Tile)){
+							cout << "R: Call mahjong from last discard.\n";
+						}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -594,10 +621,10 @@ void update(){
 							east.see_Hand();
 							turn += 1;
 						}
-						else if (option == 'C' || option == 'c'){
+						/*else if (option == 'C' || option == 'c'){
 							cout << "You take the last discard" << endl;
 							turn += 1;
-						}
+						}*/
 						else if (option == 'H' || option == 'h'){
 							east.see_Hand();
 						}
@@ -607,6 +634,28 @@ void update(){
 						else if (option == 'V' || option == 'v'){
 							see_Discards();
 						}
+						else if (option == 'P' || option == 'p'){
+							for (int i = 0; i < 4; i++){
+								if (east.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (east.hand[j].value == east.hand[j + 1].value && east.hand[j + 1].value == last_Discard_Tile.value && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit){
+											east.melds[i] = Meld(east.hand[j], east.hand[j + 1], last_Discard_Tile);
+											east.hand[j] = NULL;
+											east.hand[j + 1] = NULL;
+											east.hand = east.sort_Hand(east.hand);
+											break;
+										}
+									}
+								}
+							}
+							turn += 1;
+						}
+						/*else if (option == 'K' || option == 'k'){
+							turn += 1;
+						}*/
+						else if (option == 'R' || option == 'r'){
+							has_Won_Hand = true;
+						}
 					}
 				}
 #pragma endregion East Turn
@@ -615,7 +664,11 @@ void update(){
 				if (turn == SOUTH){
 					while (turn == SOUTH){
 						cout << "South player, choose:" << endl;
-						cout << "D: Draw a tile.\nC: Claim the last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						// if (can chow){cout << "C: Call chow from last discard.\n"}
+						// if (can pong){cout << "P: Call pong from last discard.\n"}
+						// if (can kong){cout << "K: Call kong from last discard.\n"}
+						// if (can win){cout << "R: Call mahjong from last discard.\n"}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -623,10 +676,10 @@ void update(){
 							south.see_Hand();
 							turn += 1;
 						}
-						else if (option == 'C' || option == 'c'){
+						/*else if (option == 'C' || option == 'c'){
 							cout << "You take the last discard" << endl;
 							turn += 1;
-						}
+						}*/
 						else if (option == 'H' || option == 'h'){
 							south.see_Hand();
 						}
@@ -644,7 +697,11 @@ void update(){
 				if (turn == WEST){
 					while (turn == WEST){
 						cout << "West player, choose:" << endl;
-						cout << "D: Draw a tile.\nC: Claim the last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						// if (can chow){cout << "C: Call chow from last discard.\n"}
+						// if (can pong){cout << "P: Call pong from last discard.\n"}
+						// if (can kong){cout << "K: Call kong from last discard.\n"}
+						// if (can win){cout << "R: Call mahjong from last discard.\n"}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -652,10 +709,10 @@ void update(){
 							west.see_Hand();
 							turn += 1;
 						}
-						else if (option == 'C' || option == 'c'){
+						/*else if (option == 'C' || option == 'c'){
 							cout << "You take the last discard" << endl;
 							turn += 1;
-						}
+						}*/
 						else if (option == 'H' || option == 'h'){
 							west.see_Hand();
 						}
@@ -673,7 +730,11 @@ void update(){
 				if (turn == NORTH){
 					while (turn == NORTH){
 						cout << "North player, choose:" << endl;
-						cout << "D: Draw a tile.\nC: Claim the last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+						// if (can chow){cout << "C: Call chow from last discard.\n"}
+						// if (can pong){cout << "P: Call pong from last discard.\n"}
+						// if (can kong){cout << "K: Call kong from last discard.\n"}
+						// if (can win){cout << "R: Call mahjong from last discard.\n"}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -681,10 +742,10 @@ void update(){
 							north.see_Hand();
 							turn = EAST;
 						}
-						else if (option == 'C' || option == 'c'){
+						/*else if (option == 'C' || option == 'c'){
 							cout << "You take the last discard" << endl;
-							turn = EAST;
-						}
+							turn += 1;
+						}*/
 						else if (option == 'H' || option == 'h'){
 							north.see_Hand();
 						}
@@ -700,10 +761,21 @@ void update(){
 
 				cout << "\n\n";
 
-				cin >> herp;
-				if (draw_Tile(setup_Wall).value == NULL || herp == 'e'){
-					move_Round = 1;
-					round_Counter += move_Round;
+				if (draw_Tile(setup_Wall).value == NULL || has_Won_Hand == true){
+					if (round_Counter != NORTH && turn_Counter != NORTH){
+						if (turn_Counter == NORTH){
+							move_Round += 1;
+							turn_Counter = EAST;
+						}
+						else{
+							turn_Counter = turn_Counter + 1;
+						}
+						round_Counter = 6;
+					}
+				}
+				else{
+					// Game end.
+					game_Running = NONE;
 				}
 			}
 		}
