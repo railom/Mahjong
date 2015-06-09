@@ -1,6 +1,6 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
-// Date: 6/8/2015
+// Date: 6/9/2015
 // Version: 0.0.1 Alpha
 
 #include <stdio.h>
@@ -119,11 +119,13 @@ struct Tile{
 
 struct Meld{
 	string name;			// The name of the meld, any of: pong, kong, or chow (chii).
+	string suit;			// The suit of the meld. Melds can only be made of the same suit.
 	bool hidden = true;		// Whether or not the meld is in hand or open.
 	Tile* melded = new Tile[4];
 
 	Meld(){
 		name = "NONE";
+		suit = "NONE";
 		melded = NULL;
 	}
 
@@ -131,6 +133,7 @@ struct Meld{
 		if (x.value == y.value && x.suit == y.suit)
 		{
 			name = "Pair";
+			suit = x.suit;
 			melded[0] = x;
 			melded[1] = y;
 			melded[2] = NULL;
@@ -142,6 +145,7 @@ struct Meld{
 		if (w.value <= 0){
 			if (x.value == y.value && y.value == z.value && x.suit == y.suit && y.suit == z.suit){
 				name = "Pong";
+				suit = x.suit;
 				melded[0] = x;
 				melded[1] = y;
 				melded[2] = z;

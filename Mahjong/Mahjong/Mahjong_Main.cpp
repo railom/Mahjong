@@ -1,6 +1,6 @@
 // The main game code.
 // Author: Alex Lobl
-// Date: 6/8/2015
+// Date: 6/9/2015
 // Version: 0.0.1 Alpha
 
 #include "Mahjong_Dice.cpp"
@@ -24,8 +24,9 @@ int turn = EAST;
 int turn_Counter = EAST;
 int round_Counter = 0;
 int move_Round = 0;
+//int first_Player = EAST;
 
-die A_die = die();
+die dice_A = die();
 
 Game M_type;
 
@@ -37,7 +38,7 @@ char honors[] = { 's', 'n', 'e', 'w', 'd', 't', 'g' };
 char normals[] = { 'm', 'p', 's' };
 
 bool game_is_running = true;
-bool has_Won_Hand = false;
+bool hand_Won = false;
 
 Tile wall[144];
 Tile wall2[144];
@@ -59,7 +60,7 @@ Tile draw_Tile(Tile* wall, int x = 0){
 	// Draw a the next tile in the wall. If there is no tile at the current position, 
 	// move to the next position until there is one.
 	Tile temp;
-	if (x == 0){
+	if (x == 0){						// If we aren't replacing a flower or season or kong start at the beginning of the wall.
 		for (int i = 0; i < 144; i++){	// Out of all tiles in the wall, find one to draw.
 			if (wall[i].value > 0){		// As long as there exists a valid tile to draw.
 				temp = wall[i];			// Draw it.
@@ -68,8 +69,8 @@ Tile draw_Tile(Tile* wall, int x = 0){
 			}
 		}
 	}
-	else {
-		for (int i = 143; i > 0; i--){
+	else {								// Otherwise, start at the end of the wall to replace.
+		for (int i = 143; i > 0; i--){	// Out of all the tiles in wall starting at the end, find one to draw.
 			if (wall[i].value > 0){
 				temp = wall[i];
 				wall[i] = NULL;
@@ -306,30 +307,32 @@ Tile* wall_Split(Tile* x, int roll = 0){
 	return Split_wall;
 }
 
-Tile* discard_Tile(Player p, Tile d, Tile* w){
+Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 
 	// A selected tile from a player's hand is discarded into the discards.
 	Player this_Player = p;
 	Tile temp;
 	bool discarded = false;
 	int x;
-
-	cout << "Drawn tile: " << d.value << " " << d.suit << endl;
-	while (d.suit == "Winter" || d.suit == "Summer" || d.suit == "Autumn" || d.suit == "Spring" ||
-		d.suit == "Plum" || d.suit == "Orchid" || d.suit == "Bamboo" || d.suit == "Chrysanthemum"){
-		for (int i = 0; i < 8; i++){
-			if (this_Player.claimed[i].value > 0){
-				this_Player.claimed[i] = d;
-			}
-		}
-		d = draw_Tile(w, 1);
+	
+	if (!meld){
 		cout << "Drawn tile: " << d.value << " " << d.suit << endl;
-	}
-	for (int j = 0; j < 8; j++){
-		if (this_Player.hand_Points != 0){
-			if (this_Player.claimed[j].value > 0){
-				if (this_Player.claimed[j].value != this_Player.player_Value){
-					this_Player.hand_Points -= 1;
+		while (d.suit == "Winter" || d.suit == "Summer" || d.suit == "Autumn" || d.suit == "Spring" ||
+			d.suit == "Plum" || d.suit == "Orchid" || d.suit == "Bamboo" || d.suit == "Chrysanthemum"){
+			for (int i = 0; i < 8; i++){
+				if (this_Player.claimed[i].value > 0){
+					this_Player.claimed[i] = d;
+				}
+			}
+			d = draw_Tile(w, 1);
+			cout << "Drawn tile: " << d.value << " " << d.suit << endl;
+		}
+		for (int j = 0; j < 8; j++){
+			if (this_Player.hand_Points != 0){
+				if (this_Player.claimed[j].value > 0){
+					if (this_Player.claimed[j].value != this_Player.player_Value){
+						this_Player.hand_Points -= 1;
+					}
 				}
 			}
 		}
@@ -343,12 +346,18 @@ Tile* discard_Tile(Player p, Tile d, Tile* w){
 
 		if (x < 14){
 			temp = this_Player.hand[x - 1];
-			this_Player.hand[x - 1] = d;
+			if (!meld) this_Player.hand[x - 1] = d;
+			else this_Player.hand[x - 1] = NULL;
 			discarded = true;
 		}
 		else if (x == 14){
-			temp = d;
-			discarded = true;
+			if (!meld){
+				temp = d;
+				discarded = true;
+			}
+			else{
+				cout << "You can't discard your claimed tile." << endl;
+			}
 		}
 		else if (x == 15){
 			this_Player.see_Hand();
@@ -365,16 +374,111 @@ Tile* discard_Tile(Player p, Tile d, Tile* w){
 	int k = 0;
 	while (!discarded){
 		if (discards[k].value <= 0){
-			discards[k] = temp;
+			if (!meld) discards[k] = temp;
+			else discards[k - 1] = temp;
 			last_Discard_Tile = temp;
 			discarded = true;
 		}
 		else {
 			k++;
 		}
-
 	}
+	this_Player.make_Pairs(this_Player.hand);
 	return this_Player.sort_Hand(this_Player.hand);
+}
+
+int calculate_Points(Meld* m, Tile* h, Tile l, Player p){
+	int all_Chows = 0;
+	int all_Pongs = 0;
+	int all_Honors = 0;
+	int yakuhai = 0;
+	int flush = 0;
+	int three_Dragons = 0;
+	int four_Winds = 0;
+	bool tsumo = false;
+	bool fully_Concealed = false;
+
+	for (int i = 0; i < 4; i++){
+		if (m[i].name == "Chow"){
+			all_Chows++;
+			/*for (int j = i + 1; j < 4 - i; j++){
+				if (m[i].suit == m[j].suit ){
+					flush += 1;
+				}
+			}*/
+		}
+		if (m[i].name == "Pong"){
+			all_Pongs++;
+			if (m[i].suit == "Green Dragon" || m[i].suit == "White Dragon" || m[i].suit == "Red Dragon"){
+				yakuhai += 1;
+				three_Dragons += 1;
+				all_Honors += 1;
+			}
+			if ((m[i].suit == "East" && m[i].melded[0].value == p.player_Value) ||
+				(m[i].suit == "South" && m[i].melded[0].value == p.player_Value) ||
+				(m[i].suit == "West" && m[i].melded[0].value == p.player_Value) ||
+				(m[i].suit == "North" && m[i].melded[0].value == p.player_Value)){
+				yakuhai += 1;
+				four_Winds += 1;
+				all_Honors += 1;
+			}
+			else if (m[i].suit == "East" || m[i].suit == "South" || m[i].suit == "West" || m[i].suit == "North") {
+				four_Winds += 1;
+				all_Honors += 1;
+			}
+			if ((m[i].suit == "East" && m[i].melded[0].value == round_Counter) ||
+				(m[i].suit == "South" && m[i].melded[0].value == round_Counter) ||
+				(m[i].suit == "West" && m[i].melded[0].value == round_Counter) ||
+				(m[i].suit == "North" && m[i].melded[0].value == round_Counter)){
+				yakuhai += 1;
+			}
+			
+
+		}
+	}
+
+	if (all_Chows == 4){
+		cout << "All chows" << endl;
+		p.hand_Points += 1;
+	}
+	else if (all_Pongs == 4){
+		cout << "All pongs." << endl;
+		p.hand_Points += 3;
+	}
+	if (tsumo){
+		p.hand_Points += 1;
+	}
+	if (fully_Concealed){
+		p.hand_Points += 1;
+	}
+	if (three_Dragons == 2 && (p.pair.suit == "Green Dragon" || p.pair.suit == "White Dragon" || p.pair.suit == "Red Dragon")){
+		cout << "Little Three Dragons." << endl;
+		p.hand_Points += 3;
+	}
+	else if (three_Dragons == 3) {
+		cout << "Big Three Dragons." << endl;
+		p.hand_Points += 6;
+	}
+	if (four_Winds == 3 && (p.pair.suit == "East" || p.pair.suit == "South" || p.pair.suit == "West" || p.pair.suit == "North")){
+		cout << "Little Four Winds." << endl;
+		p.hand_Points += 6;
+	}
+	else if (four_Winds == 4){
+		cout << "Big Four Winds." << endl;
+		p.hand_Points += 8;
+	}
+	if (p.claimed[7].value > 0){
+		cout << "All Flowers and Seasons." << endl;
+		p.hand_Points += 6;
+	}
+	if (all_Honors == 4 && (p.pair.suit == "Green Dragon" || p.pair.suit == "White Dragon" || p.pair.suit == "Red Dragon" ||
+		p.pair.suit == "East" || p.pair.suit == "South" || p.pair.suit == "West" || p.pair.suit == "North")){
+		cout << "All Honors." << endl;
+		p.hand_Points += 8;
+	}
+	p.hand_Points += yakuhai;
+
+	return p.hand_Points;
 }
 
 void hand_Create(Tile* t_wall){
@@ -435,7 +539,6 @@ void see_Discards(){
 	}
 }
 
-
 void update(){
 	srand(time(NULL));
 
@@ -478,10 +581,12 @@ void update(){
 #pragma region 
 	if (game_Running == HONGKONG){
 		while (game_Running == HONGKONG){
+			hand_Won = false;
 			round_Counter = EAST + move_Round; 
 			cout << "Round: " << round_Counter << endl;
 			cout << "Turn: " << turn_Counter << endl;
-			roll = A_die.HK_roll();
+			
+			roll = dice_A.HK_roll();
 			cout << "Rolled " << roll << "\n\n" << endl;
 
 			for (int i = 0; i < 144; i++){
@@ -489,7 +594,14 @@ void update(){
 					discards[i] = NULL;
 				}
 			}
+
 			setup_Wall = wall_Split(wall_Setup(), roll);
+			
+			east.has_Won_Hand = false;
+			south.has_Won_Hand = false;
+			west.has_Won_Hand = false;
+			north.has_Won_Hand = false;
+
 			east.hand_Points = 1;
 			south.hand_Points = 1;
 			north.hand_Points = 1;
@@ -598,8 +710,9 @@ void update(){
 			while (round_Counter < 6){
 
 #pragma region
-				if (turn == EAST){
-					while (turn == EAST){
+				if (turn == EAST && !hand_Won){
+					while (turn == EAST && !hand_Won){
+						east.make_Pairs(east.hand);
 						cout << "East player, choose:" << endl;
 						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
 						if (east.can_Chow(east.hand, last_Discard_Tile)){
@@ -611,8 +724,10 @@ void update(){
 						if (east.can_Kong(east.hand, last_Discard_Tile)){
 							cout << "K: Call kong from last discard.\n";
 						}
-						if (east.can_Win(east.hand, last_Discard_Tile)){
-							cout << "R: Call mahjong from last discard.\n";
+						if (last_Discard_Tile.value > 0){
+							if (east.can_Win(east.hand, last_Discard_Tile)){
+								cout << "R: Call mahjong from last discard.\n";
+							}
 						}
 						cin >> option;
 
@@ -621,10 +736,6 @@ void update(){
 							east.see_Hand();
 							turn += 1;
 						}
-						/*else if (option == 'C' || option == 'c'){
-							cout << "You take the last discard" << endl;
-							turn += 1;
-						}*/
 						else if (option == 'H' || option == 'h'){
 							east.see_Hand();
 						}
@@ -634,41 +745,102 @@ void update(){
 						else if (option == 'V' || option == 'v'){
 							see_Discards();
 						}
+#pragma region
+						else if (option == 'C' || option == 'c'){
+							for (int i = 0; i < 4; i++){
+								if (east.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if ((east.hand[j].value == east.hand[j + 1].value - 1 && east.hand[j + 1].value == last_Discard_Tile.value - 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 1 && east.hand[j + 1].value == last_Discard_Tile.value + 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(east.hand[j].value == east.hand[j + 1].value - 2 && east.hand[j + 1].value == last_Discard_Tile.value + 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 1 && east.hand[j + 1].value == last_Discard_Tile.value - 2 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(east.hand[j].value == east.hand[j + 1].value - 1 && east.hand[j + 1].value == last_Discard_Tile.value + 2 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 2 && east.hand[j + 1].value == last_Discard_Tile.value - 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit)){
+											east.melds[i] = Meld(east.hand[j], east.hand[j + 1], last_Discard_Tile);
+											east.melds[i].hidden = false;
+											east.hand[j] = NULL;
+											east.hand[j + 1] = NULL;
+											east.hand = discard_Tile(east, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							east.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Chow-ing
+
+#pragma region
 						else if (option == 'P' || option == 'p'){
 							for (int i = 0; i < 4; i++){
 								if (east.melds[i].name == "NONE"){
 									for (int j = 0; j < 13; j++){
 										if (east.hand[j].value == east.hand[j + 1].value && east.hand[j + 1].value == last_Discard_Tile.value && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit){
 											east.melds[i] = Meld(east.hand[j], east.hand[j + 1], last_Discard_Tile);
+											east.melds[i].hidden = false;
 											east.hand[j] = NULL;
 											east.hand[j + 1] = NULL;
-											east.hand = east.sort_Hand(east.hand);
+											east.hand = discard_Tile(east, last_Discard_Tile, setup_Wall, true);
 											break;
 										}
 									}
 								}
 							}
+							east.see_Hand();
 							turn += 1;
 						}
-						/*else if (option == 'K' || option == 'k'){
+#pragma endregion Pong-ing
+
+#pragma region
+						else if (option == 'K' || option == 'k'){
+							for (int i = 0; i < 4; i++){
+								if (east.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (east.hand[j].value == east.hand[j+1].value && east.hand[j+1].value == east.hand[j+2].value && east.hand[j+2].value == last_Discard_Tile.value && east.hand[j].suit == east.hand[j+1].suit && east.hand[j+1].suit == east.hand[j+2].suit && east.hand[j+2].suit == last_Discard_Tile.suit){
+											east.melds[i] = Meld(east.hand[j], east.hand[j + 1], east.hand[j + 2], last_Discard_Tile);
+											east.melds[i].hidden = false;
+											east.hand[j] = NULL;
+											east.hand[j + 1] = NULL;
+											east.hand[j + 2] = NULL;
+											// TODO: Draw a replacement, then discard. Not just discard an extra tile.
+											east.hand = discard_Tile(east, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							east.see_Hand();
 							turn += 1;
-						}*/
+						}
+#pragma endregion Kong-ing
+
 						else if (option == 'R' || option == 'r'){
-							has_Won_Hand = true;
+							east.has_Won_Hand = true;
+							cout << "Points won: " << calculate_Points(east.melds, east.hand, last_Discard_Tile, east) << "\n\n";
+							hand_Won = true;
 						}
 					}
 				}
 #pragma endregion East Turn
 
 #pragma region
-				if (turn == SOUTH){
-					while (turn == SOUTH){
+				if (turn == SOUTH & !hand_Won){
+					while (turn == SOUTH && !hand_Won){
+						south.make_Pairs(south.hand);
 						cout << "South player, choose:" << endl;
 						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
-						// if (can chow){cout << "C: Call chow from last discard.\n"}
-						// if (can pong){cout << "P: Call pong from last discard.\n"}
-						// if (can kong){cout << "K: Call kong from last discard.\n"}
-						// if (can win){cout << "R: Call mahjong from last discard.\n"}
+						if (south.can_Chow(south.hand, last_Discard_Tile)){
+							cout << "C: Call chow from last discard.\n";
+						}
+						if (south.can_Pong(south.hand, last_Discard_Tile)){
+							cout << "P: Call pong from last discard.\n";
+						}
+						if (south.can_Kong(south.hand, last_Discard_Tile)){
+							cout << "K: Call kong from last discard.\n";
+						}
+						if (last_Discard_Tile.value > 0){
+							if (south.can_Win(south.hand, last_Discard_Tile)){
+								cout << "R: Call mahjong from last discard.\n";
+							}
+						}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -676,10 +848,6 @@ void update(){
 							south.see_Hand();
 							turn += 1;
 						}
-						/*else if (option == 'C' || option == 'c'){
-							cout << "You take the last discard" << endl;
-							turn += 1;
-						}*/
 						else if (option == 'H' || option == 'h'){
 							south.see_Hand();
 						}
@@ -689,19 +857,101 @@ void update(){
 						else if (option == 'V' || option == 'v'){
 							see_Discards();
 						}
+#pragma region
+						else if (option == 'C' || option == 'c'){
+							for (int i = 0; i < 4; i++){
+								if (south.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if ((south.hand[j].value == south.hand[j + 1].value - 1 && south.hand[j + 1].value == last_Discard_Tile.value - 1 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit) || (south.hand[j].value == south.hand[j + 1].value + 1 && south.hand[j + 1].value == last_Discard_Tile.value + 1 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(south.hand[j].value == south.hand[j + 1].value - 2 && south.hand[j + 1].value == last_Discard_Tile.value + 1 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit) || (south.hand[j].value == south.hand[j + 1].value + 1 && south.hand[j + 1].value == last_Discard_Tile.value - 2 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(south.hand[j].value == south.hand[j + 1].value - 1 && south.hand[j + 1].value == last_Discard_Tile.value + 2 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit) || (south.hand[j].value == south.hand[j + 1].value + 2 && south.hand[j + 1].value == last_Discard_Tile.value - 1 && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit)){
+											south.melds[i] = Meld(south.hand[j], south.hand[j + 1], last_Discard_Tile);
+											south.melds[i].hidden = false;
+											south.hand[j] = NULL;
+											south.hand[j + 1] = NULL;
+											south.hand = discard_Tile(south, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							south.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Chow-ing
+
+#pragma region
+						else if (option == 'P' || option == 'p'){
+							for (int i = 0; i < 4; i++){
+								if (south.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (south.hand[j].value == south.hand[j + 1].value && south.hand[j + 1].value == last_Discard_Tile.value && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == last_Discard_Tile.suit){
+											south.melds[i] = Meld(south.hand[j], south.hand[j + 1], last_Discard_Tile);
+											south.melds[i].hidden = false;
+											south.hand[j] = NULL;
+											south.hand[j + 1] = NULL;
+											south.hand = discard_Tile(south, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							south.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Pong-ing
+
+#pragma region
+						else if (option == 'K' || option == 'k'){
+							for (int i = 0; i < 4; i++){
+								if (south.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (south.hand[j].value == south.hand[j + 1].value && south.hand[j + 1].value == south.hand[j + 2].value && south.hand[j + 2].value == last_Discard_Tile.value && south.hand[j].suit == south.hand[j + 1].suit && south.hand[j + 1].suit == south.hand[j + 2].suit && south.hand[j + 2].suit == last_Discard_Tile.suit){
+											south.melds[i] = Meld(south.hand[j], south.hand[j + 1], south.hand[j + 2], last_Discard_Tile);
+											south.melds[i].hidden = false;
+											south.hand[j] = NULL;
+											south.hand[j + 1] = NULL;
+											south.hand[j + 2] = NULL;
+											// TODO: Draw a replacement, then discard. Not just discard an extra tile.
+											south.hand = discard_Tile(south, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							south.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Kong-ing
+						else if (option == 'R' || option == 'r'){
+							south.has_Won_Hand = true;
+							cout << "Points won: " << calculate_Points(south.melds, south.hand, last_Discard_Tile, south) << endl;
+							hand_Won = true;
+						}
 					}
 				}
 #pragma endregion South Turn
 
 #pragma region
-				if (turn == WEST){
-					while (turn == WEST){
+				if (turn == WEST && !hand_Won){
+					while (turn == WEST && !hand_Won){
+						west.make_Pairs(west.hand);
 						cout << "West player, choose:" << endl;
 						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
-						// if (can chow){cout << "C: Call chow from last discard.\n"}
-						// if (can pong){cout << "P: Call pong from last discard.\n"}
-						// if (can kong){cout << "K: Call kong from last discard.\n"}
-						// if (can win){cout << "R: Call mahjong from last discard.\n"}
+						if (west.can_Chow(west.hand, last_Discard_Tile)){
+							cout << "C: Call chow from last discard.\n";
+						}
+						if (west.can_Pong(west.hand, last_Discard_Tile)){
+							cout << "P: Call pong from last discard.\n";
+						}
+						if (west.can_Kong(west.hand, last_Discard_Tile)){
+							cout << "K: Call kong from last discard.\n";
+						}
+						if (last_Discard_Tile.value > 0){
+							if (west.can_Win(west.hand, last_Discard_Tile)){
+								cout << "R: Call mahjong from last discard.\n";
+							}
+						}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -709,10 +959,6 @@ void update(){
 							west.see_Hand();
 							turn += 1;
 						}
-						/*else if (option == 'C' || option == 'c'){
-							cout << "You take the last discard" << endl;
-							turn += 1;
-						}*/
 						else if (option == 'H' || option == 'h'){
 							west.see_Hand();
 						}
@@ -722,19 +968,101 @@ void update(){
 						else if (option == 'V' || option == 'v'){
 							see_Discards();
 						}
+#pragma region
+						else if (option == 'C' || option == 'c'){
+							for (int i = 0; i < 4; i++){
+								if (west.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if ((west.hand[j].value == west.hand[j + 1].value - 1 && west.hand[j + 1].value == last_Discard_Tile.value - 1 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit) || (west.hand[j].value == west.hand[j + 1].value + 1 && west.hand[j + 1].value == last_Discard_Tile.value + 1 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(west.hand[j].value == west.hand[j + 1].value - 2 && west.hand[j + 1].value == last_Discard_Tile.value + 1 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit) || (west.hand[j].value == west.hand[j + 1].value + 1 && west.hand[j + 1].value == last_Discard_Tile.value - 2 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(west.hand[j].value == west.hand[j + 1].value - 1 && west.hand[j + 1].value == last_Discard_Tile.value + 2 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit) || (west.hand[j].value == west.hand[j + 1].value + 2 && west.hand[j + 1].value == last_Discard_Tile.value - 1 && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit)){
+											west.melds[i] = Meld(west.hand[j], west.hand[j + 1], last_Discard_Tile);
+											west.melds[i].hidden = false;
+											west.hand[j] = NULL;
+											west.hand[j + 1] = NULL;
+											west.hand = discard_Tile(west, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							west.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Chow-ing
+
+#pragma region
+						else if (option == 'P' || option == 'p'){
+							for (int i = 0; i < 4; i++){
+								if (west.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (west.hand[j].value == west.hand[j + 1].value && west.hand[j + 1].value == last_Discard_Tile.value && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == last_Discard_Tile.suit){
+											west.melds[i] = Meld(west.hand[j], west.hand[j + 1], last_Discard_Tile);
+											west.melds[i].hidden = false;
+											west.hand[j] = NULL;
+											west.hand[j + 1] = NULL;
+											west.hand = discard_Tile(west, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							west.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Pong-ing
+
+#pragma region
+						else if (option == 'K' || option == 'k'){
+							for (int i = 0; i < 4; i++){
+								if (west.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (west.hand[j].value == west.hand[j + 1].value && west.hand[j + 1].value == west.hand[j + 2].value && west.hand[j + 2].value == last_Discard_Tile.value && west.hand[j].suit == west.hand[j + 1].suit && west.hand[j + 1].suit == west.hand[j + 2].suit && west.hand[j + 2].suit == last_Discard_Tile.suit){
+											west.melds[i] = Meld(west.hand[j], west.hand[j + 1], west.hand[j + 2], last_Discard_Tile);
+											west.melds[i].hidden = false;
+											west.hand[j] = NULL;
+											west.hand[j + 1] = NULL;
+											west.hand[j + 2] = NULL;
+											// TODO: Draw a replacement, then discard. Not just discard an extra tile.
+											west.hand = discard_Tile(west, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							west.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Kong-ing
+						else if (option == 'R' || option == 'r'){
+							west.has_Won_Hand = true;
+							cout << "Points won: " << calculate_Points(west.melds, west.hand, last_Discard_Tile, west) << endl;
+							hand_Won = true;
+						}
 					}
 				}
 #pragma endregion West Turn
 
 #pragma region
-				if (turn == NORTH){
-					while (turn == NORTH){
+				if (turn == NORTH && !hand_Won){
+					while (turn == NORTH && !hand_Won){
+						north.make_Pairs(north.hand);
 						cout << "North player, choose:" << endl;
 						cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
-						// if (can chow){cout << "C: Call chow from last discard.\n"}
-						// if (can pong){cout << "P: Call pong from last discard.\n"}
-						// if (can kong){cout << "K: Call kong from last discard.\n"}
-						// if (can win){cout << "R: Call mahjong from last discard.\n"}
+						if (north.can_Chow(north.hand, last_Discard_Tile)){
+							cout << "C: Call chow from last discard.\n";
+						}
+						if (north.can_Pong(north.hand, last_Discard_Tile)){
+							cout << "P: Call pong from last discard.\n";
+						}
+						if (north.can_Kong(north.hand, last_Discard_Tile)){
+							cout << "K: Call kong from last discard.\n";
+						}
+						if (last_Discard_Tile.value > 0){
+							if (north.can_Win(north.hand, last_Discard_Tile)){
+								cout << "R: Call mahjong from last discard.\n";
+							}
+						}
 						cin >> option;
 
 						if (option == 'D' || option == 'd'){
@@ -742,10 +1070,6 @@ void update(){
 							north.see_Hand();
 							turn = EAST;
 						}
-						/*else if (option == 'C' || option == 'c'){
-							cout << "You take the last discard" << endl;
-							turn += 1;
-						}*/
 						else if (option == 'H' || option == 'h'){
 							north.see_Hand();
 						}
@@ -755,13 +1079,84 @@ void update(){
 						else if (option == 'V' || option == 'v'){
 							see_Discards();
 						}
+#pragma region
+						else if (option == 'C' || option == 'c'){
+							for (int i = 0; i < 4; i++){
+								if (north.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if ((north.hand[j].value == north.hand[j + 1].value - 1 && north.hand[j + 1].value == last_Discard_Tile.value - 1 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit) || (north.hand[j].value == north.hand[j + 1].value + 1 && north.hand[j + 1].value == last_Discard_Tile.value + 1 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(north.hand[j].value == north.hand[j + 1].value - 2 && north.hand[j + 1].value == last_Discard_Tile.value + 1 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit) || (north.hand[j].value == north.hand[j + 1].value + 1 && north.hand[j + 1].value == last_Discard_Tile.value - 2 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit) ||
+											(north.hand[j].value == north.hand[j + 1].value - 1 && north.hand[j + 1].value == last_Discard_Tile.value + 2 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit) || (north.hand[j].value == north.hand[j + 1].value + 2 && north.hand[j + 1].value == last_Discard_Tile.value - 1 && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit)){
+											north.melds[i] = Meld(north.hand[j], north.hand[j + 1], last_Discard_Tile);
+											north.melds[i].hidden = false;
+											north.hand[j] = NULL;
+											north.hand[j + 1] = NULL;
+											north.hand = discard_Tile(north, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							north.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Chow-ing
+
+#pragma region
+						else if (option == 'P' || option == 'p'){
+							for (int i = 0; i < 4; i++){
+								if (north.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (north.hand[j].value == north.hand[j + 1].value && north.hand[j + 1].value == last_Discard_Tile.value && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == last_Discard_Tile.suit){
+											north.melds[i] = Meld(north.hand[j], north.hand[j + 1], last_Discard_Tile);
+											north.melds[i].hidden = false;
+											north.hand[j] = NULL;
+											north.hand[j + 1] = NULL;
+											north.hand = discard_Tile(north, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							north.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Pong-ing
+
+#pragma region
+						else if (option == 'K' || option == 'k'){
+							for (int i = 0; i < 4; i++){
+								if (north.melds[i].name == "NONE"){
+									for (int j = 0; j < 13; j++){
+										if (north.hand[j].value == north.hand[j + 1].value && north.hand[j + 1].value == north.hand[j + 2].value && north.hand[j + 2].value == last_Discard_Tile.value && north.hand[j].suit == north.hand[j + 1].suit && north.hand[j + 1].suit == north.hand[j + 2].suit && north.hand[j + 2].suit == last_Discard_Tile.suit){
+											north.melds[i] = Meld(north.hand[j], north.hand[j + 1], north.hand[j + 2], last_Discard_Tile);
+											north.melds[i].hidden = false;
+											north.hand[j] = NULL;
+											north.hand[j + 1] = NULL;
+											north.hand[j + 2] = NULL;
+											// TODO: Draw a replacement, then discard. Not just discard an extra tile.
+											north.hand = discard_Tile(north, last_Discard_Tile, setup_Wall, true);
+											break;
+										}
+									}
+								}
+							}
+							north.see_Hand();
+							turn += 1;
+						}
+#pragma endregion Kong-ing
+						else if (option == 'R' || option == 'r'){
+							north.has_Won_Hand = true;
+							cout << "Points won: " << calculate_Points(north.melds, north.hand, last_Discard_Tile, north) << endl;
+							hand_Won = true;
+						}
 					}
 				}
 #pragma endregion North Turn
 
-				cout << "\n\n";
+				cout << "\n";
 
-				if (draw_Tile(setup_Wall).value == NULL || has_Won_Hand == true){
+				if (draw_Tile(setup_Wall).value == NULL || hand_Won == true){
 					if (round_Counter != NORTH && turn_Counter != NORTH){
 						if (turn_Counter == NORTH){
 							move_Round += 1;
@@ -816,4 +1211,3 @@ void main(){
 		next_Tick += SKIP_TICKS;
 	}
 }
-

@@ -1,6 +1,6 @@
 // A mahjong player.
 // Author: Alex Lobl
-// Date: 6/8/2015
+// Date: 6/9/2015
 // Version: 0.0.1 Alpha
 
 #include "Mahjong_Tile.cpp"
@@ -18,12 +18,13 @@ struct Player{
 	Tile* claimed;   // An array of tiles that have been claimed and opened as melds or seasons (if seasons are used).
 	Meld* melds = new Meld[4]; // An array of melds that have been openly melded into triples or a pair.
 	Meld* possible_Pairs = new Meld[7]; // An array of melds that shows the possible pairs that can be used to win.
+	Meld pair;		 // The winning pair.
 	int player_Value;// Purely program related. Matches a player to her corresponding season and flower.
 	int hand_Points; // The amount of points a player's hand is currently worth.
 	int points;		 // A player has a number of points. This value can be positie or negative in some versions.
 	bool riichi;	 // In Japanese mahjong, declaring a ready hand. Determines furiten status.
 	bool furiten;	 // A player is furiten if she discards her wait with a ready hand and cannot win unless it is self-draw (riichi) or until her next turn.
-
+	bool has_Won_Hand = false; // Tracks which player has won the current hand.
 
 	Player(string w, int x = 0){
 		wind = w;
@@ -101,15 +102,30 @@ struct Player{
 		return false;
 	}
 
+	// A player wins when she has 4 triples and a pair (total of 14 tiles).
+	// She is considered to be ready to win when she is one tile away from winning.
 	bool can_Win(Tile* h, Tile x){
-		/*if (possible_Pairs[7].melded[0].value > 0){
-			if (x.value == possible_Pairs[7].melded[0].value && x.suit == possible_Pairs[7].melded[0].suit){
+		if ((melds[3].name != "NONE" && can_Make_Pair(h, x)) || (melds[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h,x)))){
 				return true;
-			}
-		}*/
+		}
 		return false;
 	}
 
+	// Whether or not it's possible to make a pair. Used more for end of hand.
+	bool can_Make_Pair(Tile* h, Tile x){
+		for (int i = 0; i < 13; i++){
+			if (h[i].value > 0){
+				if (h[i].value == x.value && h[i].suit == x.suit){
+					pair = Meld(h[i], x);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	// Creates all possible pairs that may be used in the end of a hand
+	// to win.
 	void make_Pairs(Tile* h){
 		for (int i = 0; i < 13; i++){
 			if (h[i].value == h[i + 1].value && h[i].suit == h[i + 1].suit){
