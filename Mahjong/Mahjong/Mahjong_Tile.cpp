@@ -1,7 +1,7 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
 // Date: 6/9/2015
-// Version: 0.0.1 Alpha
+// Version: 0.1.0 Alpha
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,5 +178,11 @@ struct Meld{
 				melded = NULL;
 			}
 		}
+	}
+
+
+	// Memory cleanup.
+	void free_Tile_Memory(){
+		delete[] melded;
 	}
 };

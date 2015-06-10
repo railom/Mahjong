@@ -1,7 +1,7 @@
 // A mahjong player.
 // Author: Alex Lobl
 // Date: 6/9/2015
-// Version: 0.0.1 Alpha
+// Version: 0.1.0 Alpha
 
 #include "Mahjong_Tile.cpp"
 #include <cstdlib>
@@ -25,8 +25,9 @@ struct Player{
 	bool riichi;	 // In Japanese mahjong, declaring a ready hand. Determines furiten status.
 	bool furiten;	 // A player is furiten if she discards her wait with a ready hand and cannot win unless it is self-draw (riichi) or until her next turn.
 	bool has_Won_Hand = false; // Tracks which player has won the current hand.
+	bool is_AI = false;
 
-	Player(string w, int x = 0){
+	Player(string w, bool ai = false, int x = 0){
 		wind = w;
 		if (wind == "East"){
 			player_Value = 1;
@@ -43,7 +44,7 @@ struct Player{
 		points = x;
 		hand = new Tile[13];
 		claimed = new Tile[8];
-		//melds = new Meld[4];
+		is_AI = ai;
 	}
 
 	// A player can sort her hand.
@@ -128,9 +129,11 @@ struct Player{
 	// to win.
 	void make_Pairs(Tile* h){
 		for (int i = 0; i < 13; i++){
-			if (h[i].value == h[i + 1].value && h[i].suit == h[i + 1].suit){
-				for (int j = 0; j < 7; j++){
-					possible_Pairs[j] = Meld(h[i], h[i + 1]);
+			if (h[i].value > 0){
+				if (h[i].value == h[i + 1].value && h[i].suit == h[i + 1].suit){
+					for (int j = 0; j < 7; j++){
+						possible_Pairs[j] = Meld(h[i], h[i + 1]);
+					}
 				}
 			}
 		}
@@ -173,5 +176,13 @@ struct Player{
 				<< " " << hand[i].suit << endl;
 		}
 		cout << "\n";
+	}
+
+	// Memory cleanup.
+	void free_Player_Memory(){
+		delete[] melds;
+		delete[] possible_Pairs;
+		delete[] hand;
+		delete[] claimed;
 	}
 };
