@@ -1,7 +1,7 @@
 // A mahjong player.
 // Author: Alex Lobl
-// Date: 6/9/2015
-// Version: 0.1.0 Alpha
+// Date: 6/11/2015
+// Version: 0.1.1 Alpha
 
 #include "Mahjong_Tile.cpp"
 #include <cstdlib>
@@ -18,6 +18,8 @@ struct Player{
 	Tile* claimed;   // An array of tiles that have been claimed and opened as melds or seasons (if seasons are used).
 	Meld* melds = new Meld[4]; // An array of melds that have been openly melded into triples or a pair.
 	Meld* possible_Pairs = new Meld[7]; // An array of melds that shows the possible pairs that can be used to win.
+	Meld* possible_Chows = new Meld[9]; // An array of melds that shows possible chows that can be used to win.
+	Meld* possible_Pongs = new Meld[4]; // An array of melds that shows possible pongs that can be used to win.
 	Meld pair;		 // The winning pair.
 	int player_Value;// Purely program related. Matches a player to her corresponding season and flower.
 	int hand_Points; // The amount of points a player's hand is currently worth.
@@ -26,6 +28,11 @@ struct Player{
 	bool furiten;	 // A player is furiten if she discards her wait with a ready hand and cannot win unless it is self-draw (riichi) or until her next turn.
 	bool has_Won_Hand = false; // Tracks which player has won the current hand.
 	bool is_AI = false;
+	bool was_North = false;
+
+	Player(){
+
+	}
 
 	Player(string w, bool ai = false, int x = 0){
 		wind = w;
@@ -128,13 +135,43 @@ struct Player{
 	// Creates all possible pairs that may be used in the end of a hand
 	// to win.
 	void make_Pairs(Tile* h){
+		int j = 0;
 		for (int i = 0; i < 13; i++){
 			if (h[i].value > 0){
 				if (h[i].value == h[i + 1].value && h[i].suit == h[i + 1].suit){
-					for (int j = 0; j < 7; j++){
-						possible_Pairs[j] = Meld(h[i], h[i + 1]);
+					possible_Pairs[j] = Meld(h[i], h[i + 1]);
+					j++;
+				}
+			}
+		}
+	}
+
+	void make_Chows(Tile* h, Tile d = NULL){
+		Tile drawn = d;
+		int k = 0;
+		int l = 0;
+		for (int i = 0; i < 13; i++){
+			k = i + 2;
+			if (h[i].value > 0){
+				for (int j = i + 1; j < 13 - i; j++){
+					if (h[i].suit == h[j].suit && h[j].suit == h[k].suit){
+						if (h[i].value == h[j].value - 1 && h[j].value == h[k].value - 1){
+							possible_Chows[l] = Meld(h[i], h[j], h[k]);
+							l++;
+						}
+						k++;
 					}
 				}
+			}
+		}
+	}
+
+	void make_Pongs(Tile* h, Tile d = NULL){
+		int j = 0;
+		for (int i = 0; i < 13; i++){
+			if (h[i].value == h[i + 1].value && h[i + 1].value == h[i + 2].value && h[i].suit == h[i + 1].suit && h[i + 1].suit == h[i + 2].suit){
+				possible_Pongs[j] = Meld(h[i], h[i + 1], h[i + 2]);
+				j++;
 			}
 		}
 	}
