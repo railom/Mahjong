@@ -1,6 +1,6 @@
 // The main game code.
 // Author: Alex Lobl
-// Date: 6/11/2015
+// Date: 6/12/2015
 // Version: 0.1.1 Alpha
 
 #include "Mahjong_Dice.cpp"
@@ -28,6 +28,7 @@ int round_Counter = 0;
 int move_Round = 0;
 int first_Player = EAST;
 int counter = 0;
+int chow_Choice;
 
 die dice_A = die();
 
@@ -1018,20 +1019,24 @@ void update(){
 							}
 #pragma region
 							else if (option == 'C' || option == 'c'){
+								cout << "Which chow do you want to make?" << endl;
+								east.show_Chows_Choices();
+								cin >> chow_Choice;
 								for (int i = 0; i < 4; i++){
 									if (east.melds[i].name == "NONE"){
+										east.melds[i] = east.chow_Choices[chow_Choice-1];
+										east.melds[i].hidden = false;
 										for (int j = 0; j < 13; j++){
-											if ((east.hand[j].value == east.hand[j + 1].value - 1 && east.hand[j + 1].value == last_Discard_Tile.value - 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 1 && east.hand[j + 1].value == last_Discard_Tile.value + 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) ||
-												(east.hand[j].value == east.hand[j + 1].value - 2 && east.hand[j + 1].value == last_Discard_Tile.value + 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 1 && east.hand[j + 1].value == last_Discard_Tile.value - 2 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) ||
-												(east.hand[j].value == east.hand[j + 1].value - 1 && east.hand[j + 1].value == last_Discard_Tile.value + 2 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit) || (east.hand[j].value == east.hand[j + 1].value + 2 && east.hand[j + 1].value == last_Discard_Tile.value - 1 && east.hand[j].suit == east.hand[j + 1].suit && east.hand[j + 1].suit == last_Discard_Tile.suit)){
-												east.melds[i] = Meld(east.hand[j], east.hand[j + 1], last_Discard_Tile);
-												east.melds[i].hidden = false;
-												east.hand[j] = NULL;
-												east.hand[j + 1] = NULL;
-												east.hand = discard_Tile(east, last_Discard_Tile, setup_Wall, true);
-												break;
+											if (east.hand[j].value > 0){
+												if (east.hand[j].suit == east.melds[i].suit && (east.hand[j].value == east.melds[i].melded[0].value || east.hand[j].value == east.melds[i].melded[1].value || east.hand[j].value == east.melds[i].melded[2].value) &&
+													(east.hand[j + 1].suit == east.melds[i].suit && (east.hand[j + 1].value == east.melds[i].melded[0].value || east.hand[j + 1].value == east.melds[i].melded[1].value || east.hand[j + 1].value == east.melds[i].melded[2].value))){
+													east.hand[j] = NULL;
+													east.hand[j + 1] = NULL;
+												}
 											}
 										}
+										east.hand = discard_Tile(east, last_Discard_Tile, setup_Wall, true);
+										break;
 									}
 								}
 								east.see_Hand();

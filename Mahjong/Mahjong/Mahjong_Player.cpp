@@ -1,6 +1,6 @@
 // A mahjong player.
 // Author: Alex Lobl
-// Date: 6/11/2015
+// Date: 6/12/2015
 // Version: 0.1.1 Alpha
 
 #include "Mahjong_Tile.cpp"
@@ -20,6 +20,7 @@ struct Player{
 	Meld* possible_Pairs = new Meld[7]; // An array of melds that shows the possible pairs that can be used to win.
 	Meld* possible_Chows = new Meld[9]; // An array of melds that shows possible chows that can be used to win.
 	Meld* possible_Pongs = new Meld[4]; // An array of melds that shows possible pongs that can be used to win.
+	Meld* chow_Choices = new Meld[9];
 	Meld pair;		 // The winning pair.
 	int player_Value;// Purely program related. Matches a player to her corresponding season and flower.
 	int hand_Points; // The amount of points a player's hand is currently worth.
@@ -80,14 +81,18 @@ struct Player{
 
 	// A player knows whether or not she can make a meld with a previously discarded tile
 	// based on her hand.
-	// TODO: Return all possible matches, not just the first one.
 	bool can_Chow(Tile* h, Tile x){
+		int j = 0;
 		for (int i = 0; i < 13; i++){
 			if ((h[i].value == h[i+1].value - 1 && h[i+1].value == x.value - 1 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit) || (h[i].value == h[i+1].value + 1 && h[i+1].value == x.value + 1 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit) ||
 				(h[i].value == h[i+1].value - 2 && h[i+1].value == x.value + 1 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit) || (h[i].value == h[i+1].value + 1 && h[i+1].value == x.value - 2 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit) ||
 				(h[i].value == h[i+1].value - 1 && h[i+1].value == x.value + 2 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit) || (h[i].value == h[i+1].value + 2 && h[i+1].value == x.value - 1 && h[i].suit == h[i+1].suit && h[i+1].suit == x.suit)){
-				return true;
+				chow_Choices[j] = Meld(h[i], h[i + 1], x);
+				j++;
 			}
+		}
+		if (chow_Choices[0].name != "NONE"){
+			return true;
 		}
 		return false;
 	}
@@ -169,9 +174,11 @@ struct Player{
 	void make_Pongs(Tile* h, Tile d = NULL){
 		int j = 0;
 		for (int i = 0; i < 13; i++){
-			if (h[i].value == h[i + 1].value && h[i + 1].value == h[i + 2].value && h[i].suit == h[i + 1].suit && h[i + 1].suit == h[i + 2].suit){
-				possible_Pongs[j] = Meld(h[i], h[i + 1], h[i + 2]);
-				j++;
+			if (h[i].value > 0){
+				if (h[i].value == h[i + 1].value && h[i + 1].value == h[i + 2].value && h[i].suit == h[i + 1].suit && h[i + 1].suit == h[i + 2].suit){
+					possible_Pongs[j] = Meld(h[i], h[i + 1], h[i + 2]);
+					j++;
+				}
 			}
 		}
 	}
@@ -213,6 +220,19 @@ struct Player{
 				<< " " << hand[i].suit << endl;
 		}
 		cout << "\n";
+	}
+
+	void show_Chows_Choices(){
+		for (int i = 0; i < 9; i++){
+			if (chow_Choices[i].name != "NONE"){
+				for (int j = 0; j < 4; j++){
+					if (chow_Choices[i].melded[j].value > 0){
+						cout << "Chow " << i + 1 << ": " << chow_Choices[i].melded[j].value << " " << chow_Choices[i].melded[j].suit << endl;
+					}
+				}
+				cout << "\n";
+			}
+		}
 	}
 
 	// Memory cleanup.

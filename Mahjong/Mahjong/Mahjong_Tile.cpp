@@ -1,7 +1,7 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
-// Date: 6/9/2015
-// Version: 0.1.0 Alpha
+// Date: 6/12/2015
+// Version: 0.1.1 Alpha
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,6 +155,7 @@ struct Meld{
 				(x.value == y.value - 2 && y.value == z.value + 1 && x.suit == y.suit && y.suit == z.suit) || (x.value == y.value + 1 && y.value == z.value - 2 && x.suit == y.suit && y.suit == z.suit) ||
 				(x.value == y.value - 1 && y.value == z.value + 2 && x.suit == y.suit && y.suit == z.suit) || (x.value == y.value + 2 && y.value == z.value - 1 && x.suit == y.suit && y.suit == z.suit)){
 				name = "Chow";
+				suit = x.suit;
 				melded[0] = x;
 				melded[1] = y;
 				melded[2] = z;
