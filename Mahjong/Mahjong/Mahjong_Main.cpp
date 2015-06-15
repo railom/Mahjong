@@ -1,6 +1,6 @@
 // The main game code.
 // Author: Alex Lobl
-// Date: 6/12/2015
+// Date: 6/15/2015
 // Version: 0.1.1 Alpha
 
 #include "Mahjong_Dice.cpp"
@@ -15,6 +15,7 @@ using namespace std;
 using namespace std::chrono;
 
 void see_Discards();
+int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd = false, bool lt = false, bool rt = false);
 
 #pragma region
 enum Turn { EAST, SOUTH, WEST, NORTH };
@@ -39,6 +40,8 @@ char option;
 char flowers[] = { 'p', 'c', 'b', 'o', 'z', 'u', 'f', 'i' };
 char honors[] = { 's', 'n', 'e', 'w', 'd', 't', 'g' };
 char normals[] = { 'm', 'p', 's' };
+
+string language = "Japanese";
 
 bool game_is_running = true;
 bool hand_Won = false;
@@ -90,6 +93,15 @@ Tile draw_Tile(Tile* d_wall, int x = 0){
 
 Tile see_Next_Tile(Tile* w){
 	for (int i = 0; i < 144; i++){
+		if (w[i].value > 0){
+			return w[i];
+		}
+	}
+	return NULL;
+}
+
+Tile see_Last_Tile(Tile* w){
+	for (int i = 143; i > 0; i--){
 		if (w[i].value > 0){
 			return w[i];
 		}
@@ -337,10 +349,74 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 	int x;
 
 #pragma region
+	if (this_Player.can_Win(this_Player.hand, d)){
+		std::cout << "Tsumo on " << d.value << " " << d.suit << "?" << endl;
+		std::cout << "R: Tsumo.\nH: View hand.\nM: View claimed tiles.\nV: View the discards.\nS: Pass.\n";
+		cin >> option;
+
+		if (option == 'R' || option == 'r'){
+			for (int i = 0; i < 9; i++){
+				if (this_Player.possible_Chows[i].name != "NONE"){
+					for (int j = 0; j < 4; j++){
+						if (this_Player.melds[j].name == "NONE"){
+							this_Player.melds[j] = this_Player.possible_Chows[i];
+							for (int k = 0; k < 4; k++){
+								// Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
+								if (this_Player.melds[j].suit == this_Player.possible_Chows[i + 1].suit && this_Player.melds[j].melded[k].value == this_Player.possible_Chows[i + 1].melded[k].value){
+									this_Player.possible_Chows[i + 1] = Meld();
+								}
+							}
+							break;
+						}
+					}
+				}
+				if (i < 4){
+					if (this_Player.possible_Pongs[i].name != "NONE"){
+						for (int j = 0; j < 4; j++){
+							if (this_Player.melds[j].name == "NONE"){
+								this_Player.melds[j] = this_Player.possible_Pongs[i];
+								break;
+							}
+						}
+					}
+				}
+			}
+			for (int i = 0; i < 4; i++){
+				if (this_Player.melds[i].name != "NONE"){
+					std::cout << "Meld " << i + 1 << ": " << this_Player.melds[i].name << endl;
+					for (int j = 0; j < 3; j++){
+						std::cout << this_Player.melds[i].melded[j].value << " " << this_Player.melds[i].melded[j].suit << endl;
+					}
+				}
+			}
+			if (calculate_Points(this_Player.melds, this_Player.hand, d, this_Player, true) >= 3){
+				//std::cout << calculate_Points(this_Player.melds, this_Player.hand, d, this_Player, true) << endl;
+				system("PAUSE");
+			}
+			else {
+				std::cout << "False win. Not enough points." << endl;
+			}
+		}
+		else if (option == 'H' || option == 'h'){
+			this_Player.see_Hand();
+		}
+		else if (option == 'M' || option == 'm'){
+			this_Player.see_Claimed();
+		}
+		else if (option == 'V' || option == 'v'){
+			see_Discards();
+		}
+		else if (option == 'S' || option == 's'){
+			pass = true;
+		}
+	}
+#pragma endregion Self Draw Win
+
+#pragma region
 	if (this_Player.can_Kong(this_Player.hand, d) && !this_Player.is_AI){
 		while (!pass){
-			cout << "Kong on " << d.value << " " << d.suit << "?" << endl;
-			cout << "K: Kong.\nH: View hand.\nM: View claimed tiles.\nV: View the discards.\nS: Pass.\n";
+			std::cout << "Kong on " << d.value << " " << d.suit << "?" << endl;
+			std::cout << "K: Kong.\nH: View hand.\nM: View claimed tiles.\nV: View the discards.\nS: Pass.\n";
 			cin >> option;
 
 			if (option == 'K' || option == 'k'){
@@ -379,7 +455,7 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 #pragma endregion Fully concealed kong
 
 	if (!meld && !konged){
-		cout << "Drawn tile: " << d.value << " " << d.suit << endl;
+		std::cout << "Drawn tile: " << d.value << " " << d.suit << endl;
 		while (d.suit == "Winter" || d.suit == "Summer" || d.suit == "Autumn" || d.suit == "Spring" ||
 			d.suit == "Plum" || d.suit == "Orchid" || d.suit == "Bamboo" || d.suit == "Chrysanthemum"){
 			for (int i = 0; i < 8; i++){
@@ -388,7 +464,7 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 				}
 			}
 			d = draw_Tile(w, 1);
-			cout << "Drawn tile: " << d.value << " " << d.suit << endl;
+			std::cout << "Drawn tile: " << d.value << " " << d.suit << endl;
 		}
 		for (int j = 0; j < 8; j++){
 			if (this_Player.hand_Points != 0){
@@ -402,9 +478,9 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 	}
 
 	while (!discarded && !konged){
-		cout << "\n";
-		cout << "Which tile would you like to discard? 1-13 from hand or the 14th drawn tile?" << endl;
-		cout << "1-14: Discard that tile.\n15: View hand.\n16: View drawn tile.\n";
+		std::cout << "\n";
+		std::cout << "Which tile would you like to discard? 1-13 from hand or the 14th drawn tile?" << endl;
+		std::cout << "1-14: Discard that tile.\n15: View hand.\n16: View drawn tile.\n";
 		cin >> x;
 
 		if (x < 14){
@@ -415,7 +491,7 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 				discarded = true;
 			}
 			else{
-				cout << "Choose an appropriate tile to discard." << endl;
+				std::cout << "Choose an appropriate tile to discard." << endl;
 			}
 		}
 		else if (x == 14){
@@ -424,17 +500,17 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 				discarded = true;
 			}
 			else{
-				cout << "You can't discard your claimed tile." << endl;
+				std::cout << "You can't discard your claimed tile." << endl;
 			}
 		}
 		else if (x == 15){
 			this_Player.see_Hand();
 		}
 		else if (x == 16){
-			cout << "Drawn tile: " << d.value << " " << d.suit << endl;
+			std::cout << "Drawn tile: " << d.value << " " << d.suit << endl;
 		}
 		else if (x > 16 || x < 1){
-			cout << "That is not a option." << endl;
+			std::cout << "That is not a option." << endl;
 		}
 	}
 
@@ -458,16 +534,65 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false){
 	return this_Player.hand;
 }
 
-int calculate_Points(Meld* m, Tile* h, Tile l, Player p){
-	int all_Chows = 0;
-	int all_Pongs = 0;
-	int all_Honors = 0;
-	int yakuhai = 0;
-	int flush = 0;
-	int three_Dragons = 0;
-	int four_Winds = 0;
-	bool tsumo = false;
-	bool fully_Concealed = true;
+int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd, bool lt, bool rt){
+	int all_Chows = 0;		// How many chows were in hand?
+	int all_Pongs = 0;		// How many pongs were in hand?
+	int conc_Pongs = 0;		// How many concealed pongs in hand?
+	int all_Honors = 0;		// How many honors were in hand?
+	int yakuhai = 0;		// How many honor pongs scored points?
+	int three_Dragons = 0;	// How many dragon pongs were in hand?
+	int four_Winds = 0;		// How many wind pongs were in hand?
+	bool houtei = lt;		// Did the win happen on the last drawn tile?
+	bool haitei = false;	// Did the win happen on the last discard?
+	bool kong_Replace = rt;	// Did the win happen on a replacement tile from a kong?
+	bool tsumo = sd;		// Was the winning tile self-drawn?
+	bool fully_Concealed = true;	// Was the hand completely concealed? Including last tile.
+	bool flush = false;		// Was the hand only one suit?
+	bool h_Flush = false;	// Was the hand only one suit and honors?
+
+	if (p.can_Pong(h, l)){
+		for (int i = 0; i < 13; i++){
+			if (h[i].suit == l.suit && h[i].value == l.value && l.value == h[i + 1].value){
+				m[3] = Meld(h[i], h[i + 1], l);
+				std::cout << "Meld 4: " << m[3].name << endl;
+				for (int j = 0; j < 3; j++){
+					std::cout << m[3].melded[j].value << " " << m[3].melded[j].suit << endl;
+				}
+			}
+		}
+	}
+	else if (p.can_Chow(h, l)){
+		for (int j = 0; j < 13; j++){
+			if (h[j].value > 0){
+				if ((h[j].value == h[j + 1].value - 1 && h[j + 1].value == l.value - 1 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit) || (h[j].value == h[j + 1].value + 1 && h[j + 1].value == l.value + 1 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit) ||
+					(h[j].value == h[j + 1].value - 2 && h[j + 1].value == l.value + 1 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit) || (h[j].value == h[j + 1].value + 1 && h[j + 1].value == l.value - 2 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit) ||
+					(h[j].value == h[j + 1].value - 1 && h[j + 1].value == l.value + 2 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit) || (h[j].value == h[j + 1].value + 2 && h[j + 1].value == l.value - 1 && h[j].suit == h[j + 1].suit && h[j + 1].suit == l.suit)){
+					m[3] = Meld(h[j], h[j + 1], l);
+					std::cout << "Meld 4: " << m[3].name << endl;
+					for (int j = 0; j < 3; j++){
+						std::cout << m[3].melded[j].value << " " << m[3].melded[j].suit << endl;
+					}
+				}
+			}
+		}
+	}
+
+	if (m[0].suit == m[1].suit && m[1].suit == m[2].suit && m[2].suit == m[3].suit && m[3].suit == p.pair.suit){
+		flush = true;
+	}
+	else if ((m[0].suit == m[1].suit && m[1].suit == m[2].suit && m[2].suit == m[3].suit && m[3].suit != p.pair.suit &&
+		(p.pair.suit == "Green Dragon" || p.pair.suit == "White Dragon" || p.pair.suit == "Red Dragon" || p.pair.suit == "North" ||
+		p.pair.suit == "South" || p.pair.suit == "West" || p.pair.suit == "East")) || (m[0].suit == m[1].suit && m[1].suit == m[2].suit && m[2].suit != m[3].suit && m[2].suit == p.pair.suit &&
+		(m[3].suit == "Green Dragon" || m[3].suit == "White Dragon" || m[3].suit == "Red Dragon" || m[3].suit == "North" ||
+		m[3].suit == "South" || m[3].suit == "West" || m[3].suit == "East")) || (m[0].suit == m[1].suit && m[1].suit != m[2].suit && m[1].suit == m[3].suit && m[3].suit == p.pair.suit &&
+		(m[2].suit == "Green Dragon" || m[2].suit == "White Dragon" || m[2].suit == "Red Dragon" || m[2].suit == "North" ||
+		m[2].suit == "South" || m[2].suit == "West" || m[2].suit == "East")) || (m[0].suit == m[2].suit && m[1].suit != m[2].suit && m[2].suit == m[3].suit && m[3].suit == p.pair.suit &&
+		(m[1].suit == "Green Dragon" || m[1].suit == "White Dragon" || m[1].suit == "Red Dragon" || m[1].suit == "North" ||
+		m[1].suit == "South" || m[1].suit == "West" || m[1].suit == "East")) || (m[0].suit != m[1].suit && m[1].suit == m[2].suit && m[2].suit == m[3].suit && m[3].suit == p.pair.suit &&
+		(m[0].suit == "Green Dragon" || m[0].suit == "White Dragon" || m[0].suit == "Red Dragon" || m[0].suit == "North" ||
+		m[0].suit == "South" || m[0].suit == "West" || m[0].suit == "East"))){
+		h_Flush = true;
+	}
 
 	for (int i = 0; i < 4; i++){
 		if (!m[i].hidden){
@@ -483,6 +608,9 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p){
 		}
 		if (m[i].name == "Pong" || m[i].name == "Kong"){
 			all_Pongs++;
+			if (m[i].hidden == true){
+				conc_Pongs++;
+			}
 			if (m[i].suit == "Green Dragon" || m[i].suit == "White Dragon" || m[i].suit == "Red Dragon"){
 				yakuhai += 1;
 				three_Dragons += 1;
@@ -511,49 +639,78 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p){
 		}
 	}
 
-	if (fully_Concealed){
-		p.hand_Points += 1;
-	}
 	if (all_Chows == 4){
-		cout << "All chows" << endl;
+		if (language == "Japanese") std::cout << "All chows." << endl;
+		else if (language == "Chinese") std::cout << "Ping Woo." << endl;
 		p.hand_Points += 1;
 	}
 	else if (all_Pongs == 4){
-		cout << "All pongs." << endl;
+		if (language == "Japanese") std::cout << "All pongs." << endl;
+		else if (language == "Chinese") std::cout << "Dui Dui Woo." << endl;
 		p.hand_Points += 3;
 	}
+	if (conc_Pongs == 4){
+		if (language == "Japanese") std::cout << "Suu Ankou." << endl;
+		else if (language == "Chinese") std::cout << "Kan Kan Woo." << endl;
+		p.hand_Points += 8;
+	}
 	if (tsumo){
+		if (language == "Japanese") std::cout << "Tsumo." << endl;
+		else if (language == "Chinese") std::cout << "Chi Mo." << endl;
 		p.hand_Points += 1;
 	}
-	if (fully_Concealed){
+	if (fully_Concealed && tsumo){
+		if (language == "Japanese") std::cout << "Menzen Tsumo." << endl;
+		else if (language == "Chinese") std::cout << "Moon Ching." << endl;
 		p.hand_Points += 1;
+	}
+	if (kong_Replace){
+		if (language == "Japanese") std::cout << "Rinchan Kaihou." << endl;
+		else if (language == "Chinese") std::cout << "Gong Sheung Far." << endl;
+		p.hand_Points += 2;
+	}
+	if (flush){
+		if (language == "Japanese") std::cout << "Chin Itsu." << endl;
+		else if (language == "Chinese") std::cout << "Ching Yak Sik." << endl;
+		p.hand_Points += 6;
+	}
+	else if (h_Flush){
+		if (language == "Japanese") std::cout << "Hon Itsu." << endl;
+		else if (language == "Chinese") std::cout << "Won Yat Sik." << endl;
+		p.hand_Points += 3;
 	}
 	if (three_Dragons == 2 && (p.pair.suit == "Green Dragon" || p.pair.suit == "White Dragon" || p.pair.suit == "Red Dragon")){
-		cout << "Little Three Dragons." << endl;
+		if (language == "Japanese") std::cout << "Shou Sangen." << endl;
+		else if (language == "Chinese") std::cout << "Siu Sam Yuen." << endl;
 		p.hand_Points += 3;
 	}
 	else if (three_Dragons == 3) {
-		cout << "Big Three Dragons." << endl;
+		if (language == "Japanese") std::cout << "Dai Sangen." << endl;
+		else if (language == "Chinese") std::cout << "Dai Sam Yeun." << endl;
 		p.hand_Points += 6;
 	}
 	if (four_Winds == 3 && (p.pair.suit == "East" || p.pair.suit == "South" || p.pair.suit == "West" || p.pair.suit == "North")){
-		cout << "Little Four Winds." << endl;
+		if (language == "Japanese") std::cout << "Shu Suushi." << endl;
+		else if (language == "Chinese") std::cout << "Siu Sei Hei." << endl;
 		p.hand_Points += 6;
 	}
 	else if (four_Winds == 4){
-		cout << "Big Four Winds." << endl;
+		if (language == "Japanese") std::cout << "Dai Suushi." << endl;
+		else if (language == "Chinese") std::cout << "Dai Sei Hei." << endl;
 		p.hand_Points += 8;
 	}
 	if (p.claimed[7].value > 0){
-		cout << "All Flowers and Seasons." << endl;
+		std::cout << "All Flowers and Seasons." << endl;
 		p.hand_Points += 6;
 	}
 	if (all_Honors == 4 && (p.pair.suit == "Green Dragon" || p.pair.suit == "White Dragon" || p.pair.suit == "Red Dragon" ||
 		p.pair.suit == "East" || p.pair.suit == "South" || p.pair.suit == "West" || p.pair.suit == "North")){
-		cout << "All Honors." << endl;
+		if (language == "Japanese") std::cout << "Tsuu Iisou." << endl;
+		else if (language == "Chinese") std::cout << "Chuen Tse." << endl;
 		p.hand_Points += 8;
 	}
 	p.hand_Points += yakuhai;
+	std::cout << "Number of yakuhai: " << yakuhai << endl;
 
 	return p.hand_Points;
 }
@@ -610,7 +767,7 @@ void hand_Create(Tile* t_wall){
 void see_Discards(){
 	for (int i = 0; i < 144; i++){
 		if (discards[i].value > 0){
-			cout << "Tile " << i + 1 << " in discards: " << discards[i].value
+			std::cout << "Tile " << i + 1 << " in discards: " << discards[i].value
 				<< " " << discards[i].suit << endl;
 		}
 	}
@@ -694,8 +851,8 @@ void easy_AI(Player p, Tile d, Tile* w, int x, bool meld = false){
 void update(){
 	srand(time(NULL));
 
-	cout << "What kind of mahjong do you want to play?" << endl;
-	cout << "J -- Japanese Riichi Mahjong\nH -- Hong Kong Style\nM -- Modern Chinese Style\nQ -- Quit" << endl;
+	std::cout << "What kind of mahjong do you want to play?" << endl;
+	std::cout << "J -- Japanese Riichi Mahjong\nH -- Hong Kong Style\nM -- Modern Chinese Style\nQ -- Quit" << endl;
 	cin >> e_Selector;
 	
 #pragma region
@@ -720,7 +877,7 @@ void update(){
 #pragma region 
 	if (game_Running == JAPANESE) {
 		while (game_Running == JAPANESE){
-			cout << "This mode is not implemented yet.\n";
+			std::cout << "This mode is not implemented yet.\n";
 			break;
 		}
 	}
@@ -732,8 +889,8 @@ void update(){
 			north.was_North = true;
 			hand_Won = false;
 			round_Counter = EAST + move_Round;
-			cout << "Round: " << round_Counter + 1 << endl;
-			cout << "Turn: " << turn_Counter + 1 << endl;
+			std::cout << "Round: " << round_Counter + 1 << endl;
+			std::cout << "Turn: " << turn_Counter + 1 << endl;
 
 #pragma region
 			if (turn_Counter == EAST){
@@ -865,7 +1022,7 @@ void update(){
 #pragma endregion Reset Game
 
 			roll = dice_A.HK_roll();
-			cout << "Rolled " << roll << "\n\n" << endl;
+			std::cout << "Rolled " << roll << "\n\n" << endl;
 
 			setup_Wall = wall_Split(wall_Setup(), roll);
 			
@@ -969,6 +1126,9 @@ void update(){
 			north.hand = north.sort_Hand(north.hand);
 #pragma endregion Initial Hands
 
+			// TEST CODE!!! REMOVE AFTER DONE!!!
+			// END TEST CODE!!
+
 			while (round_Counter < 6){
 
 #pragma region
@@ -979,20 +1139,21 @@ void update(){
 							east.make_Pairs(east.hand);
 							east.make_Chows(east.hand);
 							east.make_Pongs(east.hand);
-							cout << east.wind << " player, choose:" << endl;
-							cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+							std::cout << east.wind << " player, choose:" << endl;
+							std::cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+
 							if (east.can_Chow(east.hand, last_Discard_Tile)){
-								cout << "C: Call chow from last discard.\n";
+								std::cout << "C: Call chow from last discard.\n";
 							}
 							if (east.can_Pong(east.hand, last_Discard_Tile)){
-								cout << "P: Call pong from last discard.\n";
+								std::cout << "P: Call pong from last discard.\n";
 							}
 							if (east.can_Kong(east.hand, last_Discard_Tile)){
-								cout << "K: Call kong from last discard.\n";
+								std::cout << "K: Call kong from last discard.\n";
 							}
 							if (last_Discard_Tile.value > 0){
 								if (east.can_Win(east.hand, last_Discard_Tile)){
-									cout << "R: Call mahjong from last discard.\n";
+									std::cout << "R: Call mahjong from last discard.\n";
 								}
 							}
 							cin >> option;
@@ -1019,13 +1180,14 @@ void update(){
 							}
 #pragma region
 							else if (option == 'C' || option == 'c'){
-								cout << "Which chow do you want to make?" << endl;
+								std::cout << "Which chow do you want to make?" << endl;
 								east.show_Chows_Choices();
 								cin >> chow_Choice;
 								for (int i = 0; i < 4; i++){
 									if (east.melds[i].name == "NONE"){
 										east.melds[i] = east.chow_Choices[chow_Choice-1];
 										east.melds[i].hidden = false;
+										east.chow_Choices[chow_Choice - 1] = Meld();
 										for (int j = 0; j < 13; j++){
 											if (east.hand[j].value > 0){
 												if (east.hand[j].suit == east.melds[i].suit && (east.hand[j].value == east.melds[i].melded[0].value || east.hand[j].value == east.melds[i].melded[1].value || east.hand[j].value == east.melds[i].melded[2].value) &&
@@ -1088,9 +1250,43 @@ void update(){
 #pragma endregion Kong-ing
 
 							else if (option == 'R' || option == 'r'){
+								for (int i = 0; i < 9; i++){
+									if (east.possible_Chows[i].name != "NONE"){
+										for (int j = 0; j < 4; j++){
+											if (east.melds[j].name == "NONE"){
+												east.melds[j] = east.possible_Chows[i];
+												for (int k = 0; k < 4; k++){
+													// Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
+													if (east.melds[j].suit == east.possible_Chows[i + 1].suit && east.melds[j].melded[k].value == east.possible_Chows[i + 1].melded[k].value){
+														east.possible_Chows[i + 1] = Meld();
+													}
+												}
+												break;
+											}
+										}
+									}
+									if (i < 4){
+										if (east.possible_Pongs[i].name != "NONE"){
+											for (int j = 0; j < 4; j++){
+												if (east.melds[j].name == "NONE"){
+													east.melds[j] = east.possible_Pongs[i];
+													break;
+												}
+											}
+										}
+									}
+								}
+								for (int i = 0; i < 4; i++){
+									if (east.melds[i].name != "NONE"){
+										std::cout << "Meld " << i + 1 << ": " << east.melds[i].name << endl;
+										for (int j = 0; j < 3; j++){
+											std::cout << east.melds[i].melded[j].value << " " << east.melds[i].melded[j].suit << endl;
+										}
+									}
+								}
 								east.has_Won_Hand = true;
-								cout << "Points won: " << calculate_Points(east.melds, east.hand, last_Discard_Tile, east) << "\n\n";
-								east.points += calculate_Points(east.melds, east.hand, last_Discard_Tile, east);
+								std::cout << "Points won: " << calculate_Points(east.melds, east.hand, last_Discard_Tile, east) << "\n\n";
+								east.points += calculate_Points(east.melds, east.hand, last_Discard_Tile, east, false);
 								last_Discarder.points -= east.points;
 								hand_Won = true;
 							}
@@ -1099,7 +1295,7 @@ void update(){
 				}
 				else {
 					if (turn == EAST && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
-						cout << east.wind << " takes a turn..." << endl;
+						std::cout << east.wind << " takes a turn..." << endl;
 						easy_AI(east, draw_Tile(setup_Wall), setup_Wall, (rand() % 14 + 1));
 						counter = 0;
 						for (int i = 0; i < 144; i++){
@@ -1117,20 +1313,20 @@ void update(){
 					if (turn == SOUTH & !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 						while (turn == SOUTH && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 							south.make_Pairs(south.hand);
-							cout << south.wind << " player, choose:" << endl;
-							cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+							std::cout << south.wind << " player, choose:" << endl;
+							std::cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
 							if (south.can_Chow(south.hand, last_Discard_Tile)){
-								cout << "C: Call chow from last discard.\n";
+								std::cout << "C: Call chow from last discard.\n";
 							}
 							if (south.can_Pong(south.hand, last_Discard_Tile)){
-								cout << "P: Call pong from last discard.\n";
+								std::cout << "P: Call pong from last discard.\n";
 							}
 							if (south.can_Kong(south.hand, last_Discard_Tile)){
-								cout << "K: Call kong from last discard.\n";
+								std::cout << "K: Call kong from last discard.\n";
 							}
 							if (last_Discard_Tile.value > 0){
 								if (south.can_Win(south.hand, last_Discard_Tile)){
-									cout << "R: Call mahjong from last discard.\n";
+									std::cout << "R: Call mahjong from last discard.\n";
 								}
 							}
 							cin >> option;
@@ -1222,7 +1418,7 @@ void update(){
 #pragma endregion Kong-ing
 							else if (option == 'R' || option == 'r'){
 								south.has_Won_Hand = true;
-								cout << "Points won: " << calculate_Points(south.melds, south.hand, last_Discard_Tile, south) << endl;
+								std::cout << "Points won: " << calculate_Points(south.melds, south.hand, last_Discard_Tile, south) << endl;
 								hand_Won = true;
 							}
 						}
@@ -1230,16 +1426,16 @@ void update(){
 				}
 				else {
 					if (turn == SOUTH & !hand_Won && see_Next_Tile(setup_Wall).value > 0){
-						cout << south.wind << " takes a turn..." << endl;
+						std::cout << south.wind << " takes a turn..." << endl;
 						easy_AI(south, draw_Tile(setup_Wall), setup_Wall, (rand() % 14 + 1));
-						cout << south.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
+						std::cout << south.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
 
 #pragma region 
 						if (east.can_Pong(east.hand, last_Discard_Tile) || east.can_Kong(east.hand, last_Discard_Tile)){
 							while (!pass){
-								cout << "P: Call pong from last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards.\nS: Pass.\n";
+								std::cout << "P: Call pong from last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards.\nS: Pass.\n";
 								if (east.can_Kong(east.hand, last_Discard_Tile)){
-									cout << "K: Call kong from last discard.\n";
+									std::cout << "K: Call kong from last discard.\n";
 								}
 								cin >> option;
 								if (option == 'P' || option == 'p'){
@@ -1314,20 +1510,20 @@ void update(){
 					if (turn == WEST && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 						while (turn == WEST && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 							west.make_Pairs(west.hand);
-							cout << west.wind << " player, choose:" << endl;
-							cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+							std::cout << west.wind << " player, choose:" << endl;
+							std::cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
 							if (west.can_Chow(west.hand, last_Discard_Tile)){
-								cout << "C: Call chow from last discard.\n";
+								std::cout << "C: Call chow from last discard.\n";
 							}
 							if (west.can_Pong(west.hand, last_Discard_Tile)){
-								cout << "P: Call pong from last discard.\n";
+								std::cout << "P: Call pong from last discard.\n";
 							}
 							if (west.can_Kong(west.hand, last_Discard_Tile)){
-								cout << "K: Call kong from last discard.\n";
+								std::cout << "K: Call kong from last discard.\n";
 							}
 							if (last_Discard_Tile.value > 0){
 								if (west.can_Win(west.hand, last_Discard_Tile)){
-									cout << "R: Call mahjong from last discard.\n";
+									std::cout << "R: Call mahjong from last discard.\n";
 								}
 							}
 							cin >> option;
@@ -1419,7 +1615,7 @@ void update(){
 #pragma endregion Kong-ing
 							else if (option == 'R' || option == 'r'){
 								west.has_Won_Hand = true;
-								cout << "Points won: " << calculate_Points(west.melds, west.hand, last_Discard_Tile, west) << endl;
+								std::cout << "Points won: " << calculate_Points(west.melds, west.hand, last_Discard_Tile, west) << endl;
 								hand_Won = true;
 							}
 						}
@@ -1427,16 +1623,16 @@ void update(){
 				}
 				else{
 					if (turn == WEST && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
-						cout << west.wind << " takes a turn..." << endl;
+						std::cout << west.wind << " takes a turn..." << endl;
 						easy_AI(west, draw_Tile(setup_Wall), setup_Wall, (rand() % 14 + 1));
-						cout << west.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
+						std::cout << west.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
 
 #pragma region 
 						if (east.can_Pong(east.hand, last_Discard_Tile) || east.can_Kong(east.hand, last_Discard_Tile)){
 							while (!pass){
-								cout << "P: Call pong from last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards.\nS: Pass.\n";
+								std::cout << "P: Call pong from last discard.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards.\nS: Pass.\n";
 								if (east.can_Kong(east.hand, last_Discard_Tile)){
-									cout << "K: Call kong from last discard.\n";
+									std::cout << "K: Call kong from last discard.\n";
 								}
 								cin >> option;
 								if (option == 'P' || option == 'p'){
@@ -1511,20 +1707,20 @@ void update(){
 					if (turn == NORTH && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 						while (turn == NORTH && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
 							north.make_Pairs(north.hand);
-							cout << north.wind << " player, choose:" << endl;
-							cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
+							std::cout << north.wind << " player, choose:" << endl;
+							std::cout << "D: Draw a tile.\nH: View your hand.\nM: View your claimed tiles.\nV: View the discards." << endl;
 							if (north.can_Chow(north.hand, last_Discard_Tile)){
-								cout << "C: Call chow from last discard.\n";
+								std::cout << "C: Call chow from last discard.\n";
 							}
 							if (north.can_Pong(north.hand, last_Discard_Tile)){
-								cout << "P: Call pong from last discard.\n";
+								std::cout << "P: Call pong from last discard.\n";
 							}
 							if (north.can_Kong(north.hand, last_Discard_Tile)){
-								cout << "K: Call kong from last discard.\n";
+								std::cout << "K: Call kong from last discard.\n";
 							}
 							if (last_Discard_Tile.value > 0){
 								if (north.can_Win(north.hand, last_Discard_Tile)){
-									cout << "R: Call mahjong from last discard.\n";
+									std::cout << "R: Call mahjong from last discard.\n";
 								}
 							}
 							cin >> option;
@@ -1616,7 +1812,7 @@ void update(){
 #pragma endregion Kong-ing
 							else if (option == 'R' || option == 'r'){
 								north.has_Won_Hand = true;
-								cout << "Points won: " << calculate_Points(north.melds, north.hand, last_Discard_Tile, north) << endl;
+								std::cout << "Points won: " << calculate_Points(north.melds, north.hand, last_Discard_Tile, north) << endl;
 								hand_Won = true;
 							}
 						}
@@ -1624,9 +1820,9 @@ void update(){
 				}
 				else{
 					if (turn == NORTH && !hand_Won && see_Next_Tile(setup_Wall).value > 0){
-						cout << north.wind << " takes a turn..." << endl;
+						std::cout << north.wind << " takes a turn..." << endl;
 						easy_AI(north, draw_Tile(setup_Wall), setup_Wall, (rand() % 14 + 1));
-						cout << north.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
+						std::cout << north.wind << " discards " << last_Discard_Tile.value << " " << last_Discard_Tile.suit << endl;
 
 						counter = 0;
 						for (int i = 0; i < 144; i++){
@@ -1638,7 +1834,7 @@ void update(){
 				}
 #pragma endregion North Turn
 
-				cout << "\n";
+				std::cout << "\n";
 
 				if (counter == 0 || hand_Won == true){
 					if (round_Counter == NORTH && turn_Counter == NORTH){
@@ -1666,7 +1862,7 @@ void update(){
 #pragma region
 		if (game_Running == CHINESE){
 			while (game_Running == CHINESE){
-				cout << "This mode is not implemented yet.\n";
+				std::cout << "This mode is not implemented yet.\n";
 				break;
 			}
 		}
@@ -1674,7 +1870,7 @@ void update(){
 
 #pragma region
 		if (game_Running == NONE){
-			cout << "Thank you for playing.\n";
+			std::cout << "Thank you for playing.\n";
 			game_is_running = false;
 		}
 #pragma endregion Quit

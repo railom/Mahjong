@@ -1,6 +1,6 @@
 // A mahjong player.
 // Author: Alex Lobl
-// Date: 6/12/2015
+// Date: 6/15/2015
 // Version: 0.1.1 Alpha
 
 #include "Mahjong_Tile.cpp"
@@ -17,7 +17,7 @@ struct Player{
 	Tile* discards;  // In Japanese mahjong, each player discards into her own discard pile due to sacred discard.
 	Tile* claimed;   // An array of tiles that have been claimed and opened as melds or seasons (if seasons are used).
 	Meld* melds = new Meld[4]; // An array of melds that have been openly melded into triples or a pair.
-	Meld* possible_Pairs = new Meld[7]; // An array of melds that shows the possible pairs that can be used to win.
+	Meld* possible_Pairs = new Meld[13]; // An array of melds that shows the possible pairs that can be used to win.
 	Meld* possible_Chows = new Meld[9]; // An array of melds that shows possible chows that can be used to win.
 	Meld* possible_Pongs = new Meld[4]; // An array of melds that shows possible pongs that can be used to win.
 	Meld* chow_Choices = new Meld[9];
@@ -118,9 +118,19 @@ struct Player{
 	// A player wins when she has 4 triples and a pair (total of 14 tiles).
 	// She is considered to be ready to win when she is one tile away from winning.
 	bool can_Win(Tile* h, Tile x){
-		if ((melds[3].name != "NONE" && can_Make_Pair(h, x)) || (melds[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h,x)))){
-				return true;
+		// Check open melds only. If there are 4 open melds and a pair, or if there are 3 open melds, a player can pong or chow, and has a pair.
+		if ((melds[3].name != "NONE" && can_Make_Pair(h, x)) || (melds[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))){
+			return true;
 		}
+		// Check possible combinations of chows and pongs in hand.
+		else if ((possible_Chows[3].name != "NONE" && can_Make_Pair(h, x)) || (possible_Chows[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))
+			|| (possible_Chows[2].name != "NONE" && possible_Pongs[0].name != "NONE" && can_Make_Pair(h, x)) || (possible_Chows[1].name != "NONE" && possible_Pongs[1].name != "NONE" && can_Make_Pair(h, x))
+			|| (possible_Chows[1].name != "NONE" && possible_Pongs[0].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))
+			|| (possible_Chows[0].name != "NONE" && possible_Pongs[2].name != "NONE" && can_Make_Pair(h, x)) || (possible_Chows[0].name != "NONE" && possible_Pongs[1].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))
+			|| (possible_Pongs[3].name != "NONE" && can_Make_Pair(h, x)) || (possible_Pongs[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))){
+			return true;
+		} // Thirteen Orphans 
+		//else if (h)
 		return false;
 	}
 
@@ -159,12 +169,14 @@ struct Player{
 			k = i + 2;
 			if (h[i].value > 0){
 				for (int j = i + 1; j < 13 - i; j++){
-					if (h[i].suit == h[j].suit && h[j].suit == h[k].suit){
-						if (h[i].value == h[j].value - 1 && h[j].value == h[k].value - 1){
-							possible_Chows[l] = Meld(h[i], h[j], h[k]);
-							l++;
+					if (k < 13){
+						if (h[i].suit == h[j].suit && h[j].suit == h[k].suit){
+							if (h[i].value == h[j].value - 1 && h[j].value == h[k].value - 1){
+								possible_Chows[l] = Meld(h[i], h[j], h[k]);
+								l++;
+							}
+							k++;
 						}
-						k++;
 					}
 				}
 			}
