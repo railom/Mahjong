@@ -1,7 +1,7 @@
 // A mahjong player.
 // Author: Alex Lobl
-// Date: 6/15/2015
-// Version: 0.1.1 Alpha
+// Date: 6/24/2015
+// Version: 0.2.0 Alpha
 
 #include "Mahjong_Tile.cpp"
 #include <cstdlib>
@@ -23,8 +23,10 @@ struct Player{
 	Meld* chow_Choices = new Meld[9];
 	Meld pair;		 // The winning pair.
 	int player_Value;// Purely program related. Matches a player to her corresponding season and flower.
-	int hand_Points; // The amount of points a player's hand is currently worth.
+	int hand_Points = 0; // The amount of points a player's hand is currently worth.
 	int points;		 // A player has a number of points. This value can be positie or negative in some versions.
+	int tile_Number = 0;
+	int meld_Number = 1;
 	bool riichi;	 // In Japanese mahjong, declaring a ready hand. Determines furiten status.
 	bool furiten;	 // A player is furiten if she discards her wait with a ready hand and cannot win unless it is self-draw (riichi) or until her next turn.
 	bool has_Won_Hand = false; // Tracks which player has won the current hand.
@@ -82,6 +84,13 @@ struct Player{
 		return h;
 	}
 
+	Meld make_Pair(Tile* h, Tile d){
+		for (int i = 0; i < 13; i++){
+			if (h[i].suit == d.suit && h[i].value == d.value) return Meld(h[i], d);
+		}
+		
+	}
+
 	// A player knows whether or not she can make a meld with a previously discarded tile
 	// based on her hand.
 	bool can_Chow(Tile* h, Tile x){
@@ -126,6 +135,7 @@ struct Player{
 	// A player wins when she has 4 triples and a pair (total of 14 tiles).
 	// She is considered to be ready to win when she is one tile away from winning.
 	bool can_Win(Tile* h, Tile x){
+		shift_Chows();
 		// Check open melds only. If there are 4 open melds and a pair, or if there are 3 open melds, a player can pong or chow, and has a pair.
 		if ((melds[3].name != "NONE" && can_Make_Pair(h, x)) || (melds[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))){
 			return true;
@@ -171,6 +181,42 @@ struct Player{
 		return false;
 	}
 
+	int count_Tile(Tile x){
+		if (has_Tile(x)){
+			for (int i = 0; i < 13; i++){
+				if (hand[i].suit == x.suit && hand[i].value == x.value){
+					tile_Number++;
+				}
+			}
+		}
+		return tile_Number;
+	}
+
+	int count_Melds(Meld m){
+		for (int i = 0; i < 9; i++){
+			if (possible_Chows[i].melded != NULL && possible_Chows[i + 1].melded != NULL){
+				/*if (m.suit == possible_Chows[i].suit && possible_Chows[i].suit == possible_Chows[i + 1].suit 
+					&& (m.melded[0].value == possible_Chows[i].melded[0].value && possible_Chows[i].melded[0].value == possible_Chows[i + 1].melded[0].value) 
+					&& (m.melded[1].value == possible_Chows[i].melded[1].value && possible_Chows[i].melded[1].value == possible_Chows[i + 1].melded[1].value)
+					&& (m.melded[2].value == possible_Chows[i].melded[2].value && possible_Chows[i].melded[2].value == possible_Chows[i + 1].melded[2].value)){
+					meld_Number++;
+				}*/
+				if (m == possible_Chows[i] && possible_Chows[i] == possible_Chows[i + 1]){
+					meld_Number++;
+				}
+			}
+		}
+		return meld_Number;
+	}
+
+	int tile_Pos(Tile x){
+			for (int i = 0; i < 13; i++){
+				if (hand[i].suit == x.suit && hand[i].value == x.value){
+					return i;
+				}
+			}
+	}
+
 	// Creates all possible pairs that may be used in the end of a hand
 	// to win.
 	void make_Pairs(Tile* h){
@@ -214,6 +260,32 @@ struct Player{
 				if (h[i].value == h[i + 1].value && h[i + 1].value == h[i + 2].value && h[i].suit == h[i + 1].suit && h[i + 1].suit == h[i + 2].suit){
 					possible_Pongs[j] = Meld(h[i], h[i + 1], h[i + 2]);
 					j++;
+				}
+			}
+		}
+	}
+
+	void shift_Chows(){
+		for (int i = 0; i < 9; i++){
+			if (possible_Chows[i].name != "NONE"){
+				// To Do: Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
+				/*if (count_Melds(possible_Chows[i]) > 1){
+					i = i + count_Melds(possible_Chows[i]);
+				}
+				if (i < 9 && possible_Chows[i].name != "NONE"){*/
+				for (int k = 0; k < 4; k++){
+					if (possible_Chows[i].suit == possible_Chows[i + 1].suit && possible_Chows[i].melded[k].value == possible_Chows[i + 1].melded[k].value){
+						possible_Chows[i + 1] = Meld();
+					}
+				}
+				//}
+			}
+		}
+		for (int i = 0; i < 9; i++){
+			if (i + 1 < 9){
+				if (possible_Chows[i].name == "NONE" && possible_Chows[i + 1].name != "NONE"){
+					possible_Chows[i] = possible_Chows[i + 1];
+					possible_Chows[i + 1] = Meld();
 				}
 			}
 		}

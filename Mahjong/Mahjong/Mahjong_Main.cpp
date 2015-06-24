@@ -1,7 +1,7 @@
 // The main game code.
 // Author: Alex Lobl
-// Date: 6/15/2015
-// Version: 0.1.1 Alpha
+// Date: 6/24/2015
+// Version: 0.2.0 Alpha
 
 #include "Mahjong_Dice.cpp"
 #include "Mahjong_Player.cpp"
@@ -33,6 +33,7 @@ int first_Player = EAST;
 int counter = 0;			// Counts the amount of tiles left in the wall.
 int chow_Choice;
 int tenho_Counter = 0;
+int chiho_Counter = 0;
 
 die dice_A = die();
 
@@ -49,6 +50,7 @@ string language = "Japanese";
 bool game_is_running = true;
 bool hand_Won = false;
 bool pass = false;
+bool last_Tile = false;
 
 Tile wall[144];
 Tile wall2[144];
@@ -372,6 +374,7 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false, bool kong = fal
 	Tile temp;
 	bool discarded = false;
 	bool konged = false;
+	last_Tile = (see_Next_Tile(setup_Wall).value <= 0) ? true : false;
 	int x;
 	int total_Points = 0;
 
@@ -409,32 +412,63 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false, bool kong = fal
 			std::cout << "Tsumo on " << d.value << " " << d.suit << "?" << endl;
 			std::cout << "R: Tsumo.\nH: View hand.\nM: View claimed tiles.\nV: View the discards.\nS: Pass.\n";
 			cin >> option;
-
+			
 			if (option == 'R' || option == 'r'){
+				/*if (this_Player.can_Make_Pair(this_Player.hand, d)){
+					this_Player.pair = this_Player.make_Pair(this_Player.hand, d);
+					for (int i = 0; i < 13; i++){
+						if (this_Player.hand[i].suit == this_Player.pair.suit && this_Player.hand[i].value == this_Player.pair.melded[0].value){
+							this_Player.hand[i] = NULL;
+							d = NULL;
+							this_Player.hand = this_Player.sort_Hand(this_Player.hand);
+							break;
+						}
+					}
+					this_Player.make_Chows(this_Player.hand);
+					this_Player.make_Pongs(this_Player.hand);
+				}*/
 				for (int i = 0; i < 9; i++){
 					if (this_Player.possible_Chows[i].name != "NONE"){
 						for (int j = 0; j < 4; j++){
 							if (this_Player.melds[j].name == "NONE"){
 								this_Player.melds[j] = this_Player.possible_Chows[i];
-								for (int k = 0; k < 4; k++){
-									// To do: Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
-									if (this_Player.melds[j].suit == this_Player.possible_Chows[i + 1].suit && this_Player.melds[j].melded[k].value == this_Player.possible_Chows[i + 1].melded[k].value){
-										this_Player.possible_Chows[i + 1] = Meld();
-									}
-								}
-								break;
+								/*this_Player.hand[this_Player.tile_Pos(this_Player.melds[j].melded[0])] = NULL;
+								this_Player.hand[this_Player.tile_Pos(this_Player.melds[j].melded[1])] = NULL;
+								this_Player.hand[this_Player.tile_Pos(this_Player.melds[j].melded[2])] = NULL;*/
 							}
+							//this_Player.hand = this_Player.sort_Hand(this_Player.hand);
+							//this_Player.see_Hand();
+							for (int k = 0; k < 4; k++){
+								// To do: Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
+								if (this_Player.melds[j].suit == this_Player.possible_Chows[i + 1].suit && this_Player.melds[j].melded[k].value == this_Player.possible_Chows[i + 1].melded[k].value){
+									this_Player.possible_Chows[i + 1] = Meld();
+								}
+							}
+							//this_Player.make_Chows(this_Player.hand);
+							//this_Player.make_Pongs(this_Player.hand);
+							break;
 						}
 					}
 					if (i < 4){
-						if (this_Player.possible_Pongs[i].name != "NONE"){
+						if (this_Player.possible_Pongs[i].name != "NONE" || this_Player.possible_Pongs[i].suit != "Grass"){
 							for (int j = 0; j < 4; j++){
 								if (this_Player.melds[j].name == "NONE"){
 									this_Player.melds[j] = this_Player.possible_Pongs[i];
+									/*for (int k = 0; k < 13; k++){
+										for (int z = 0; z < 4; z++){
+											if (this_Player.hand[k].suit == this_Player.melds[j].suit && this_Player.hand[k].value == this_Player.melds[j].melded[z].value){
+												this_Player.hand[k] = NULL;
+											}
+										}
+									}
+									this_Player.hand = this_Player.sort_Hand(this_Player.hand);
+									this_Player.see_Hand();*/
 									break;
 								}
 							}
 						}
+						//this_Player.make_Chows(this_Player.hand);
+						//this_Player.make_Pongs(this_Player.hand);
 					}
 				}
 				for (int i = 0; i < 4; i++){
@@ -445,7 +479,7 @@ Tile* discard_Tile(Player p, Tile d, Tile* w, bool meld = false, bool kong = fal
 						}
 					}
 				}
-				total_Points = calculate_Points(this_Player.melds, this_Player.hand, d, this_Player, true, false, kong);
+				total_Points = calculate_Points(this_Player.melds, this_Player.hand, d, this_Player, true, last_Tile, kong);
 				if (total_Points >= 3){
 					for (int i = 0; i < 4; i++){
 						if (this_Player.wind != players[i].wind){
@@ -590,8 +624,6 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd, bool lt, bool 
 	int three_Dragons = 0;	// How many dragon pongs were in hand?
 	int four_Winds = 0;		// How many wind pongs were in hand?
 	int flowers = 0;		// How many flowers and seasons were claimed?
-	bool houtei = lt;		// Did the win happen on the last drawn tile?
-	bool haitei = false;	// Did the win happen on the last discard?
 	bool kong_Replace = rt;	// Did the win happen on a replacement tile from a kong?
 	bool tsumo = sd;		// Was the winning tile self-drawn?
 	bool fully_Concealed = true;	// Was the hand completely concealed? Including last tile.
@@ -720,6 +752,16 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd, bool lt, bool 
 		}
 	}
 
+	if (lt && tsumo){
+		if (language == "Japanese") std::cout << "Houtei." << endl;
+		else if (language == "Chinese") std::cout << "Hoi Day." << endl;
+		p.hand_Points += 2;
+	}
+	else if (lt){
+		if (language == "Japanese") std::cout << "Haitei." << endl;
+		else if (language == "Chinese") std::cout << "Hoi Day." << endl;
+		p.hand_Points += 2;
+	}
 	if (flowers == 8){ // If the player has no flowers or seasons, 1 point.
 		std::cout << "No Flowers or Seasons." << endl;
 		p.hand_Points += 1;
@@ -757,6 +799,21 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd, bool lt, bool 
 		if (language == "Japanese") std::cout << "Rinchan Kaihou." << endl;
 		else if (language == "Chinese") std::cout << "Gong Sheung Far." << endl;
 		p.hand_Points += 2;
+	}
+	// If the winning tile is the last tile drawn, and is a 1 Pin, the
+	// player wins with Moon from the Bottom of the Sea, 3 points.
+	if (lt && (l.suit == "Pin" && l.value == 1)){
+		if (language == "Japanese") std::cout << "Moon From the Bottom of the Sea." << endl;
+		else if (language == "Chinese") std::cout << "Hoi Day Lao Yeut." << endl;
+		p.hand_Points += 3;
+	}
+	// If the winning tile is the 5 Pin in a 4-5-6 Pin chow, the player
+	// wins with Plum Blossom on the Roof, 3 points.
+	if (kong_Replace && m[3].name == "Chow" && (m[3].melded[0].suit == "Pin" && (m[3].melded[0].value == 4 || m[3].melded[0].value == 6) && (m[3].melded[1].value == 4 || m[3].melded[1].value == 6) && m[3].melded[2].value == 5) &&
+		(l.suit == "Pin" && l.value == 5)){
+		if (language == "Japanese") std::cout << "Plum Blossom on the Roof." << endl;
+		else if (language == "Chinese") std::cout << "Gong Shueng Mui Far." << endl;
+		p.hand_Points += 3;
 	}
 	if (flush){ // If the player wins with a full flush, 6 points.
 		if (language == "Japanese") std::cout << "Chin Itsu." << endl;
@@ -819,6 +876,8 @@ int calculate_Points(Meld* m, Tile* h, Tile l, Player p, bool sd, bool lt, bool 
 	}
 	p.hand_Points += yakuhai;
 	std::cout << "Number of yakuhai: " << yakuhai << endl << endl;
+
+	cout << p.hand_Points << endl;
 
 	return p.hand_Points;
 }
@@ -930,8 +989,10 @@ void see_Discards(){
 void easy_AI(Player p, Tile d, Tile* w, int x, bool meld = false){
 	// A selected tile from a player's hand is discarded into the discards.
 	Player this_Player = p;
+	last_Discarder = this_Player;
 	Tile temp;
 	bool discarded = false;
+	last_Tile = (see_Next_Tile(setup_Wall).value <= 0) ? true : false;
 
 	if (!meld){
 		while (d.suit == "Winter" || d.suit == "Summer" || d.suit == "Autumn" || d.suit == "Spring" ||
@@ -995,8 +1056,11 @@ void easy_AI(Player p, Tile d, Tile* w, int x, bool meld = false){
 	this_Player.hand = this_Player.sort_Hand(this_Player.hand);
 	this_Player.make_Chows(this_Player.hand);
 	this_Player.make_Pongs(this_Player.hand);
-	if (tenho_Counter == 0 && this_Player.wind == "North"){
+	if (tenho_Counter == 0 && this_Player.wind == "East"){
 		tenho_Counter = 1;
+	}
+	else if (chiho_Counter == 0 && this_Player.wind == "South"){
+		chiho_Counter = 1;
 	}
 	if (!this_Player.was_North){
 		turn += 1;
@@ -1329,6 +1393,9 @@ void update(){
 								if (east.wind == "North" && tenho_Counter == 0){
 									tenho_Counter = 1;
 								}
+								else if (east.wind == "South" && chiho_Counter == 0){
+									chiho_Counter = 1;
+								}
 								turn += 1;
 							}
 							else if (option == 'H' || option == 'h'){
@@ -1413,8 +1480,8 @@ void update(){
 
 #pragma region
 							else if (option == 'R' || option == 'r'){
-								if (tenho_Counter == 0){
-									east.chiho = true;
+								if (chiho_Counter == 0){
+									if (east.wind != "East") east.chiho = true;
 								}
 								for (int i = 0; i < 9; i++){
 									if (east.possible_Chows[i].name != "NONE"){
@@ -2006,7 +2073,62 @@ void update(){
 
 				std::cout << "\n";
 
-				if (counter == 0 || hand_Won == true){
+#pragma region
+				if (last_Tile && !hand_Won){
+					if (last_Discarder.wind != east.wind && east.can_Win(east.hand, last_Discard_Tile)){
+						for (int i = 0; i < 9; i++){
+							if (east.possible_Chows[i].name != "NONE"){
+								for (int j = 0; j < 4; j++){
+									if (east.melds[j].name == "NONE"){
+										east.melds[j] = east.possible_Chows[i];
+										for (int k = 0; k < 4; k++){
+											// To Do: Test having the same chow 2 or more times (123 123 123 123 pin). Open or closed. Currently should break.
+											if (east.melds[j].suit == east.possible_Chows[i + 1].suit && east.melds[j].melded[k].value == east.possible_Chows[i + 1].melded[k].value){
+												east.possible_Chows[i + 1] = Meld();
+											}
+										}
+										break;
+									}
+								}
+							}
+							if (i < 4){
+								if (east.possible_Pongs[i].name != "NONE"){
+									for (int j = 0; j < 4; j++){
+										if (east.melds[j].name == "NONE"){
+											east.melds[j] = east.possible_Pongs[i];
+											break;
+										}
+									}
+								}
+							}
+						}
+						for (int i = 0; i < 4; i++){
+							if (east.melds[i].name != "NONE"){
+								std::cout << "Meld " << i + 1 << ": " << east.melds[i].name << endl;
+								for (int j = 0; j < 3; j++){
+									std::cout << east.melds[i].melded[j].value << " " << east.melds[i].melded[j].suit << endl;
+								}
+							}
+						}
+						east.has_Won_Hand = true;
+						std::cout << "Points won: " << calculate_Points(east.melds, east.hand, last_Discard_Tile, east) << "\n\n";
+						east.points += calculate_Points(east.melds, east.hand, last_Discard_Tile, east, false, last_Tile);
+						last_Discarder.points -= east.points;
+						hand_Won = true;
+					}
+					else if (last_Discarder.wind != south.wind && south.can_Win(south.hand, last_Discard_Tile)){
+
+					}
+					else if (last_Discarder.wind != west.wind && west.can_Win(west.hand, last_Discard_Tile)){
+
+					}
+					else if (last_Discarder.wind != north.wind && north.can_Win(north.hand, last_Discard_Tile)){
+
+					}
+				}
+#pragma endregion Last Discarded Tile
+
+				if (counter == 0 || hand_Won){
 					if (round_Counter == NORTH && turn_Counter == NORTH){
 						// Game end.
 						round_Counter = 6;

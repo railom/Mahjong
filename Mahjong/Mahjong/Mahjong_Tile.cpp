@@ -1,7 +1,7 @@
 // A collection of tiles used in mahjong.
 // Author: Alex Lobl
-// Date: 6/12/2015
-// Version: 0.1.1 Alpha
+// Date: 6/24/2015
+// Version: 0.2.0 Alpha
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,13 +13,24 @@
 using namespace std;
 
 
+
+
 struct Tile{
 	string suit;			// A tile can be any of 4 suits or an honor.
 	int value;				// A tile of a suit can have value 1-9.
 	//bool Dora_indicator;	// Whether or not the tile indicates the dora tile. Used in Japanese mahjong.
 	//bool red;				// Whether or not the tile is red, worth an extra point in a winning hand.
 
+	friend bool operator==(const Tile& lhs, const Tile& rhs){
+		return lhs.suit == rhs.suit && lhs.value == rhs.value;
+	}
+	friend bool operator!=(const Tile& lhs, const Tile& rhs){
+		return !operator==(lhs, rhs);
+	}
+
 	Tile(){
+		suit = "Grass";
+		value = -1;
 	}
 
 	Tile(char t){
@@ -122,6 +133,13 @@ struct Meld{
 	string suit;			// The suit of the meld. Melds can only be made of the same suit.
 	bool hidden = true;		// Whether or not the meld is in hand or open.
 	Tile* melded = new Tile[4];
+
+	friend bool operator==(const Meld& lhs, const Meld& rhs){
+		return lhs.melded[0] == rhs.melded[0] && lhs.melded[1] == rhs.melded[1] && lhs.melded[2] == rhs.melded[2];
+	}
+	friend bool operator!=(const Meld& lhs, const Meld& rhs){
+		return !operator==(lhs, rhs);
+	}
 
 	Meld(){
 		name = "NONE";
