@@ -86,7 +86,7 @@ struct Player{
 
 	Meld make_Pair(Tile* h, Tile d){
 		for (int i = 0; i < 13; i++){
-			if (h[i].suit == d.suit && h[i].value == d.value) return Meld(h[i], d);
+			if (h[i] == d) return Meld(h[i], d);
 		}
 		
 	}
@@ -148,6 +148,14 @@ struct Player{
 			|| (possible_Pongs[3].name != "NONE" && can_Make_Pair(h, x)) || (possible_Pongs[2].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))){
 			return true;
 		} 
+		// Check combination of open and closed melds and pairs.
+		else if ((melds[0].name != "NONE" && possible_Chows[2].name != "NONE" && can_Make_Pair(h, x)) || (melds[0].name != "NONE" && possible_Chows[1].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h,x))) 
+			|| (melds[0].name != "NONE" && possible_Chows[1].name != "NONE" && possible_Pongs[0].name != "NONE" && can_Make_Pair(h, x)) || (melds[0].name != "NONE" && possible_Pongs[2].name != "NONE" && can_Make_Pair(h, x)) || (melds[0].name != "NONE" && possible_Pongs[1].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h, x) || can_Pong(h, x)))
+			|| (melds[0].name != "NONE" && possible_Pongs[1].name != "NONE" && possible_Chows[0].name != "NONE" && can_Make_Pair(h, x)) || (melds[1].name != "NONE" && possible_Chows[1].name != "NONE" && can_Make_Pair(h,x)) || (melds[1].name != "NONE" && possible_Chows[0].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h,x) || can_Pong(h,x)))
+			|| (melds[1].name != "NONE" && possible_Chows[0].name != "NONE" && possible_Pongs[0].name != "NONE" && can_Make_Pair(h,x)) || (melds[1].name != "NONE" && possible_Pongs[0].name != "NONE" && possible_Pairs[0].name != "NONE" && (can_Chow(h,x) || can_Pong(h,x))) || (melds[1].name != "NONE" && possible_Pongs[1].name != "NONE" && can_Make_Pair(h,x))
+			|| (melds[2].name != "NONE" && possible_Chows[0].name != "NONE" && can_Make_Pair(h,x)) || (melds[2].name != "NONE" && possible_Pongs[0].name != "NONE" && can_Make_Pair(h,x))){
+			return true;
+		}
 		// Thirteen Orphans 
 		else if ((has_Tile(Tile('p', 1)) || (x.suit == "Pin" && x.value == 1)) && (has_Tile(Tile('p', 9)) || (x.suit == "Pin" && x.value == 9)) && (has_Tile(Tile('m', 1)) || (x.suit == "Man" && x.value == 1)) && (has_Tile(Tile('m', 9)) || (x.suit == "Man" && x.value == 9)) && (has_Tile(Tile('s', 1)) || (x.suit == "Sou" && x.value == 1))
 			&& (has_Tile(Tile('s', 9)) || (x.suit == "Sou" && x.value == 9)) && (has_Tile(Tile('g')) || x.suit == "Green Dragon") && (has_Tile(Tile('t')) || x.suit == "White Dragon") && (has_Tile(Tile('d')) || x.suit == "Red Dragon") && (has_Tile(Tile('w')) || x.suit == "West") && (has_Tile(Tile('s')) || x.suit == "South") && (has_Tile(Tile('n')) || x.suit == "North")
